@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  nom       String
+  prenom    String
+  telephone String?  @unique
+  email     String?  @unique
+  password  String
+  role      Role
+  statut    String   @default("actif")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  livreur   Livreur?
+}
+
+model Client {
+  id                    Int      @id @default(autoincrement())
+  nom                   String
+  prenom                String
+  telephone             String   @unique
+  adresse               String
+  adresseLivraison      String
+  telephoneDestinataire String
+  createdAt             DateTime @default(now())
+
+  commandes Commande[]
+}
+
+model Carte {
+  id      Int    @id @default(autoincrement())
+  commune String
+  lat     Float
+  lng     Float
+}
+
+model Commande {
+  id             Int      @id @default(autoincrement())
+  clientId       Int
+  client         Client   @relation(fields: [clientId], references: [id])
+  montant        Float
+  commission     Float
+  commissionPaye Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  statut         String   @default("en_attente")
+
+  livraisons Livraison[] @relation("CommandeLivraison")
+}
+
+model Livreur {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @unique
+  disponible       Boolean   @default(false)
+  commissionDue    Float     @default(0)
+  estBloque        Boolean   @default(false)
+  derniereActivite DateTime?
+  user             User      @relation(fields: [userId], references: [id])
+
+  livraisons  Livraison[] // ✅ seul lien vers commande
+  commissions PaiementCommission[]
+  blocages    Blocage[]
+  latActuelle Float?
+  lngActuelle Float?
+}
+
+model Livraison {
+  id             Int       @id @default(autoincrement())
+  commandeId     Int
+  livreurId      Int
+  statut         String
+  dateLivraison  DateTime?
+  destinationLat Float? // 📍 manquait
+  destinationLng Float?
+  commande       Commande  @relation(fields: [commandeId], references: [id], name: "CommandeLivraison")
+  livreur        Livreur   @relation(fields: [livreurId], references: [id])
+}
+
+model PaiementCommission {
+  id        Int     @id @default(autoincrement())
+  livreurId Int
+  montant   Float
+  statut    String
+  createdAt DateTime @default(now())
+  livreur   Livreur @relation(fields: [livreurId], references: [id])
+}
+
+model Blocage {
+  id        Int     @id @default(autoincrement())
+  livreurId Int
+  raison    String
+  actif     Boolean @default(true)
+  livreur   Livreur @relation(fields: [livreurId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  LIVREUR
+  SUPERADMIN
+}

@@ -1,0 +1,155 @@
+import { Request, Response } from "express";
+import * as service from "../services/adminService";
+
+// ===== CLIENTS =====
+export const getClients = async (req: Request, res: Response) => {
+  try { res.json(await service.getClientsService()); } 
+catch (e: any) {
+  console.error(e);
+  res.status(400).json({ error: e.message });
+}};
+
+export const createOrGetClient = async (req: Request, res: Response) => {
+  try { res.json(await service.createOrGetClientService(req.body)); } 
+  catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+export const updateClient = async (req: Request, res: Response) => {
+  try {
+    const { clientId } = req.params;
+    res.json(await service.updateClientService(Number(clientId), req.body));
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+export const getClientHistorique = async (req: Request, res: Response) => {
+  try {
+    const { clientId } = req.params;
+    res.json(await service.getClientHistoriqueService(Number(clientId)));
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+// ===== COMMANDES =====
+export const getCommandes = async (req: Request, res: Response) => {
+  try { res.json(await service.getCommandesService(req.query)); } 
+catch (e: any) {
+  console.error(e);
+  res.status(400).json({ error: e.message });
+}};
+
+ 
+// ===== COMMANDES =====
+export const createCommande = async (req: Request, res: Response) => {
+  try {
+    const { clientId, adresseLivraison } = req.body;
+
+    if (!clientId) {
+      return res.status(400).json({ error: "clientId requis" });
+    }
+
+    // Récupérer le client
+    const client = await service.getClientByIdService(clientId);
+    if (!client) return res.status(404).json({ error: "Client introuvable" });
+
+    // Si une nouvelle adresseLivraison est fournie, mettre à jour le client
+    if (adresseLivraison && adresseLivraison.trim() !== "") {
+      await service.updateClientService(clientId, { adresseLivraison });
+    }
+
+    // Créer la commande en utilisant l'adresse de livraison du client si pas fournie
+    const commande = await service.createCommandeService({
+      clientId,
+      adresseLivraison: adresseLivraison || client.adresseLivraison
+    });
+
+    res.json({ message: "Commande créée avec succès", commande });
+  } catch (e: any) {
+    console.error(e);
+    res.status(400).json({ error: e.message });
+  }
+};
+
+export const updateCommande = async (req: Request, res: Response) => {
+  try {
+    const { commandeId } = req.params;
+    res.json(await service.updateCommandeService(Number(commandeId), req.body));
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+export const assignerCommande = async (req: Request, res: Response) => {
+  try {
+    const { commandeId, livreurId } = req.body;
+    if (!commandeId || !livreurId) return res.status(400).json({ error: "commandeId et livreurId requis" });
+    const livraison = await service.assignerCommandeService(Number(commandeId), Number(livreurId));
+    res.json({ message: "Commande assignée avec succès", livraison });
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+// ===== LIVREURS =====
+export const getLivreurs = async (req: Request, res: Response) => {
+  try { res.json(await service.getLivreursService()); } 
+catch (e: any) {
+  console.error(e);
+  res.status(400).json({ error: e.message });
+}};
+
+export const getProfilLivreur = async (req: Request, res: Response) => {
+  try {
+    const { livreurId } = req.params;
+    res.json(await service.getProfilLivreurService(Number(livreurId)));
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+export const toggleCompteLivreur = async (req: Request, res: Response) => {
+  try {
+    const { livreurId } = req.params;
+    res.json(await service.toggleCompteLivreurService(Number(livreurId)));
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+};
+
+// ===== PAIEMENTS =====
+/* export const getPaiements = async (req: Request, res: Response) => {
+  try { res.json(await service.getPaiementsService()); } 
+  catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+ */
+export const marquerPaiementLivreur = async (req: Request, res: Response) => {
+  try {
+    const { livreurId } = req.body;
+    if (!livreurId) return res.status(400).json({ error: "livreurId requis" });
+
+    const paiement = await service.marquerPaiementLivreurByLivreurService(Number(livreurId));
+    res.json({ message: "Commission marquée comme payée", paiement });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+};
+
+export const marquerPaiementJour = async (req: Request, res: Response) => {
+  try {
+    const { livreurId, date } = req.body;
+
+    if (!livreurId || !date) {
+      return res.status(400).json({ error: "livreurId et date requis" });
+    }
+
+    // Valider le format date
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: "Format date invalide. Attendu: YYYY-MM-DD" });
+    }
+
+const data = await service.marquerPaiementJourService(Number(livreurId), date);
+
+    res.json({
+      message: `Commissions du ${date} marquées comme payées`,
+      data,
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// ===== BLOCAGE =====
+export const bloquerLivreur = async (req: Request, res: Response) => {
+  try { res.json(await service.bloquerLivreurService(req.body)); } 
+  catch (e: any) { res.status(400).json({ error: e.message }); }
+};
