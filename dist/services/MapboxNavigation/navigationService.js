@@ -1,11 +1,13 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getETAService = exports.getInstructionService = exports.demarrerNavigationService = void 0;
 // services/navigationService.ts
+// 🗺️ Navigation Mapbox — Phase 1 (livreur → collecte) + Phase 2 (collecte → livraison)
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getETAService = exports.getInstructionService = exports.demarrerNavigationService = exports.guiderVersCollecteService = void 0;
 const prisma_config_1 = require("../../prisma/prisma.config");
 const mapboxService_1 = require("./mapboxService");
-// ─── Démarrer la navigation ───────────────────────────────────────────────────
-const demarrerNavigationService = async (livraisonId) => {
+// ─── Phase 1 : Guider le livreur vers l'adresse de collecte ──────────────────
+// Appelé dès que le livreur accepte la mission, depuis sa position GPS actuelle
+const guiderVersCollecteService = async (livraisonId, positionLivreur) => {
     const livraison = await prisma_config_1.prisma.livraison.findUnique({
         where: { id: livraisonId },
         include: {
@@ -14,28 +16,82 @@ const demarrerNavigationService = async (livraisonId) => {
     });
     if (!livraison)
         throw new Error("Livraison introuvable");
-    const departAdresse = livraison.commande.client.adresse;
+    const adresseCollecte = livraison.commande.client.adresse;
+    if (!adresseCollecte)
+        throw new Error("Adresse de collecte manquante");
+    // Géocoder l'adresse de collecte (là où se trouve le client commandeur)
+    const collecteCoords = await (0, mapboxService_1.geocoderAdresse)(adresseCollecte);
+    // Route : position GPS du livreur → adresse de collecte
+    const route = await (0, mapboxService_1.calculerRoute)([positionLivreur, collecteCoords], "driving-traffic");
+    // Sauvegarder la destination de collecte en base pour le suivi
+    await prisma_config_1.prisma.livraison.update({
+        where: { id: livraisonId },
+        data: {
+            destinationLat: collecteCoords.lat,
+            destinationLng: collecteCoords.lng,
+        },
+    });
+    return {
+        livraison,
+        route,
+        collecteCoords,
+        phase: "collecte",
+        resume: {
+            distanceKm: (route.distanceTotale / 1000).toFixed(1),
+            dureeMinutes: Math.round(route.dureeTotale / 60),
+            eta: route.eta,
+            nombreEtapes: route.etapes.length,
+            alerte: route.congestionsDetectees
+                ? "⚠️ Trafic chargé vers le point de collecte"
+                : null,
+        },
+    };
+};
+exports.guiderVersCollecteService = guiderVersCollecteService;
+// ─── Phase 2 : Démarrer la livraison (collecte → adresse de livraison) ────────
+// Appelé quand le livreur clique "Démarrer la livraison" une fois arrivé chez le client
+const demarrerNavigationService = async (livraisonId, positionActuelle // position GPS du livreur au moment du déclenchement
+) => {
+    const livraison = await prisma_config_1.prisma.livraison.findUnique({
+        where: { id: livraisonId },
+        include: {
+            commande: { include: { client: true } },
+        },
+    });
+    if (!livraison)
+        throw new Error("Livraison introuvable");
     const destinationAdresse = livraison.commande.client.adresseLivraison;
-    if (!departAdresse || !destinationAdresse) {
-        throw new Error("Adresses manquantes");
-    }
-    const depart = await (0, mapboxService_1.geocoderAdresse)(departAdresse);
+    if (!destinationAdresse)
+        throw new Error("Adresse de livraison manquante");
+    // Géocoder la destination finale
     const destination = await (0, mapboxService_1.geocoderAdresse)(destinationAdresse);
+    // Départ = position GPS actuelle du livreur si fournie, sinon adresse de collecte
+    let depart;
+    if (positionActuelle) {
+        depart = positionActuelle;
+    }
+    else {
+        // Fallback : on part de l'adresse de collecte du client
+        const adresseCollecte = livraison.commande.client.adresse;
+        if (!adresseCollecte)
+            throw new Error("Adresse de collecte manquante");
+        depart = await (0, mapboxService_1.geocoderAdresse)(adresseCollecte);
+    }
+    // Route : position actuelle du livreur → adresse de livraison finale
     const route = await (0, mapboxService_1.calculerRoute)([depart, destination], "driving-traffic");
+    // Mettre à jour la destination en base (maintenant c'est l'adresse de livraison)
     await prisma_config_1.prisma.livraison.update({
         where: { id: livraisonId },
         data: {
             destinationLat: destination.lat,
             destinationLng: destination.lng,
-            // (optionnel mais recommandé)
-            // departureLat: depart.lat,
-            // departureLng: depart.lng,
         },
     });
     return {
         livraison,
         route,
         destination,
+        phase: "livraison",
         resume: {
             distanceKm: (route.distanceTotale / 1000).toFixed(1),
             dureeMinutes: Math.round(route.dureeTotale / 60),
@@ -50,7 +106,6 @@ const demarrerNavigationService = async (livraisonId) => {
 exports.demarrerNavigationService = demarrerNavigationService;
 // ─── Prochaine instruction vocale ─────────────────────────────────────────────
 const getInstructionService = async (livraisonId, positionActuelle) => {
-    // ✅ Fix : on lit destinationLat/Lng depuis Livraison (champs ajoutés au schema)
     const livraison = await prisma_config_1.prisma.livraison.findUnique({
         where: { id: livraisonId },
     });
@@ -77,7 +132,6 @@ const getInstructionService = async (livraisonId, positionActuelle) => {
 exports.getInstructionService = getInstructionService;
 // ─── ETA temps réel ───────────────────────────────────────────────────────────
 const getETAService = async (livraisonId, positionActuelle) => {
-    // ✅ Fix : lecture depuis Livraison directement
     const livraison = await prisma_config_1.prisma.livraison.findUnique({
         where: { id: livraisonId },
     });
