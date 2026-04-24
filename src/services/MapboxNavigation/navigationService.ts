@@ -1,4 +1,6 @@
 // services/navigationService.ts
+// 🗺️ Navigation Mapbox — Phase 1 (livreur → collecte) + Phase 2 (collecte → livraison)
+
 import { prisma } from "../../prisma/prisma.config";
 import {
   calculerRoute,
@@ -7,9 +9,13 @@ import {
   type Coordonnees,
 } from "./mapboxService";
 
-// ─── Démarrer la navigation ───────────────────────────────────────────────────
+// ─── Phase 1 : Guider le livreur vers l'adresse de collecte ──────────────────
+// Appelé dès que le livreur accepte la mission, depuis sa position GPS actuelle
 
-export const demarrerNavigationService = async (livraisonId: number) => {
+export const guiderVersCollecteService = async (
+  livraisonId: number,
+  positionLivreur: Coordonnees
+) => {
   const livraison = await prisma.livraison.findUnique({
     where: { id: livraisonId },
     include: {
@@ -19,29 +25,83 @@ export const demarrerNavigationService = async (livraisonId: number) => {
 
   if (!livraison) throw new Error("Livraison introuvable");
 
-  const departAdresse = livraison.commande.client.adresse;
+  const adresseCollecte = livraison.commande.client.adresse;
+  if (!adresseCollecte) throw new Error("Adresse de collecte manquante");
+
+  // Géocoder l'adresse de collecte (là où se trouve le client commandeur)
+  const collecteCoords = await geocoderAdresse(adresseCollecte);
+
+  // Route : position GPS du livreur → adresse de collecte
+  const route = await calculerRoute([positionLivreur, collecteCoords], "driving-traffic");
+
+  // Sauvegarder la destination de collecte en base pour le suivi
+  await prisma.livraison.update({
+    where: { id: livraisonId },
+    data: {
+      destinationLat: collecteCoords.lat,
+      destinationLng: collecteCoords.lng,
+    },
+  });
+
+  return {
+    livraison,
+    route,
+    collecteCoords,
+    phase: "collecte" as const,
+    resume: {
+      distanceKm: (route.distanceTotale / 1000).toFixed(1),
+      dureeMinutes: Math.round(route.dureeTotale / 60),
+      eta: route.eta,
+      nombreEtapes: route.etapes.length,
+      alerte: route.congestionsDetectees
+        ? "⚠️ Trafic chargé vers le point de collecte"
+        : null,
+    },
+  };
+};
+
+// ─── Phase 2 : Démarrer la livraison (collecte → adresse de livraison) ────────
+// Appelé quand le livreur clique "Démarrer la livraison" une fois arrivé chez le client
+
+export const demarrerNavigationService = async (
+  livraisonId: number,
+  positionActuelle?: Coordonnees  // position GPS du livreur au moment du déclenchement
+) => {
+  const livraison = await prisma.livraison.findUnique({
+    where: { id: livraisonId },
+    include: {
+      commande: { include: { client: true } },
+    },
+  });
+
+  if (!livraison) throw new Error("Livraison introuvable");
+
   const destinationAdresse = livraison.commande.client.adresseLivraison;
+  if (!destinationAdresse) throw new Error("Adresse de livraison manquante");
 
-  if (!departAdresse || !destinationAdresse) {
-    throw new Error("Adresses manquantes");
-  }
-
-  const depart = await geocoderAdresse(departAdresse);
+  // Géocoder la destination finale
   const destination = await geocoderAdresse(destinationAdresse);
 
-  const route = await calculerRoute(
-    [depart, destination],
-    "driving-traffic"
-  );
+  // Départ = position GPS actuelle du livreur si fournie, sinon adresse de collecte
+  let depart: Coordonnees;
+  if (positionActuelle) {
+    depart = positionActuelle;
+  } else {
+    // Fallback : on part de l'adresse de collecte du client
+    const adresseCollecte = livraison.commande.client.adresse;
+    if (!adresseCollecte) throw new Error("Adresse de collecte manquante");
+    depart = await geocoderAdresse(adresseCollecte);
+  }
 
+  // Route : position actuelle du livreur → adresse de livraison finale
+  const route = await calculerRoute([depart, destination], "driving-traffic");
+
+  // Mettre à jour la destination en base (maintenant c'est l'adresse de livraison)
   await prisma.livraison.update({
     where: { id: livraisonId },
     data: {
       destinationLat: destination.lat,
       destinationLng: destination.lng,
-      // (optionnel mais recommandé)
-      // departureLat: depart.lat,
-      // departureLng: depart.lng,
     },
   });
 
@@ -49,6 +109,7 @@ export const demarrerNavigationService = async (livraisonId: number) => {
     livraison,
     route,
     destination,
+    phase: "livraison" as const,
     resume: {
       distanceKm: (route.distanceTotale / 1000).toFixed(1),
       dureeMinutes: Math.round(route.dureeTotale / 60),
@@ -67,7 +128,6 @@ export const getInstructionService = async (
   livraisonId: number,
   positionActuelle: Coordonnees
 ) => {
-  // ✅ Fix : on lit destinationLat/Lng depuis Livraison (champs ajoutés au schema)
   const livraison = await prisma.livraison.findUnique({
     where: { id: livraisonId },
   });
@@ -86,10 +146,10 @@ export const getInstructionService = async (
   const instruction = getProchaineInstruction(positionActuelle, route.etapes);
 
   return {
-    instruction:          instruction?.instruction ?? "Vous êtes arrivé à destination",
+    instruction:            instruction?.instruction ?? "Vous êtes arrivé à destination",
     distanceProchainVirage: instruction?.distanceRestante ?? 0,
-    eta:                  route.eta,
-    instructionVocale:    instruction
+    eta:                    route.eta,
+    instructionVocale:      instruction
       ? formaterInstructionVocale(instruction.distanceRestante, instruction.instruction)
       : "Vous êtes arrivé à destination",
   };
@@ -101,7 +161,6 @@ export const getETAService = async (
   livraisonId: number,
   positionActuelle: Coordonnees
 ) => {
-  // ✅ Fix : lecture depuis Livraison directement
   const livraison = await prisma.livraison.findUnique({
     where: { id: livraisonId },
   });
