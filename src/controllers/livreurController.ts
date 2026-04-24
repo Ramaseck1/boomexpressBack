@@ -68,6 +68,45 @@ export const accepterMission = async (req: Request, res: Response) => {
 };
  
 
+// 🚀 Démarrer la livraison (Phase 2)
+export const demarrerLivraison = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { livraisonId, lat, lng } = req.body;
+
+    // ✅ Vérification
+    if (!livraisonId) {
+      return res.status(400).json({
+        message: "livraisonId requis",
+      });
+    }
+
+    // 📍 Position GPS optionnelle
+    const positionActuelle =
+      lat !== undefined && lng !== undefined ? { lat, lng } : undefined;
+
+    // ✅ Appel service
+    const data = await service.demarrerLivraisonService(
+      userId,
+      Number(livraisonId),
+      positionActuelle
+    );
+
+    res.status(200).json({
+      message: "Navigation livraison démarrée",
+      data,
+    });
+
+  } catch (error: any) {
+    console.error("❌ Erreur démarrage livraison :", error);
+
+    res.status(500).json({
+      message: "Erreur lors du démarrage de la livraison",
+      error: error.message,
+    });
+  }
+};
+
 // Accepter mission
 
 

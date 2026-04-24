@@ -64,6 +64,7 @@ router.post("/missions/accepter", controller.accepterMission);
 //    Body: { livraisonId: number, lat: number, lng: number }
 //    → Géocode l'adresse, calcule la route + ETA, retourne le tracé GeoJSON
 router.post("/navigation/demarrer", navController.demarrerNavigation);
+router.post("/livraison/demarrer", controller.demarrerLivraison);
 // 2️⃣ Prochaine instruction turn-by-turn (appelé en continu par l'app mobile)
 //    GET /livreurs/navigation/:livraisonId/instruction?lat=14.69&lng=-17.44
 //    → "Dans 200 mètres, tournez à gauche" + instructionVocale
