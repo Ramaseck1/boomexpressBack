@@ -113,10 +113,7 @@ const demarrerLivraison = async (req, res) => {
         const positionActuelle = lat !== undefined && lng !== undefined ? { lat, lng } : undefined;
         // ✅ Appel service
         const data = await service.demarrerLivraisonService(userId, Number(livraisonId), positionActuelle);
-        res.status(200).json({
-            message: "Navigation livraison démarrée",
-            data,
-        });
+        res.status(200).json(data);
     }
     catch (error) {
         console.error("❌ Erreur démarrage livraison :", error);

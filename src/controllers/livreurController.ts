@@ -92,10 +92,7 @@ export const demarrerLivraison = async (req: Request, res: Response) => {
       positionActuelle
     );
 
-    res.status(200).json({
-      message: "Navigation livraison démarrée",
-      data,
-    });
+  res.status(200).json(data);
 
   } catch (error: any) {
     console.error("❌ Erreur démarrage livraison :", error);
