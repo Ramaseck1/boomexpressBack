@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.createOrGetClientService = exports.getClientsService = void 0;
+exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const axios_1 = __importDefault(require("axios"));
 // ===== Tarifs =====
@@ -12,19 +12,41 @@ const TARIF_BASE = 300;
 // ===== CLIENTS =====
 const getClientsService = async () => prisma_config_1.prisma.client.findMany();
 exports.getClientsService = getClientsService;
-const createOrGetClientService = async (data) => {
-    let client = await prisma_config_1.prisma.client.findUnique({ where: { telephone: data.telephone } });
-    if (!client)
-        client = await prisma_config_1.prisma.client.create({ data });
-    return client;
+/* export const createOrGetClientService = async (data: any) => {
+  let client = await prisma.client.findUnique({ where: { telephone: data.telephone } });
+  if (!client) client = await prisma.client.create({ data });
+  return client;
 };
-exports.createOrGetClientService = createOrGetClientService;
+ */
 const updateClientService = async (clientId, data) => prisma_config_1.prisma.client.update({ where: { id: clientId }, data });
 exports.updateClientService = updateClientService;
 const getClientHistoriqueService = async (clientId) => prisma_config_1.prisma.commande.findMany({ where: { clientId }, include: { client: true } });
 exports.getClientHistoriqueService = getClientHistoriqueService;
 const getClientByIdService = async (clientId) => prisma_config_1.prisma.client.findUnique({ where: { id: clientId } });
 exports.getClientByIdService = getClientByIdService;
+const deleteClientService = async (clientId) => prisma_config_1.prisma.client.delete({ where: { id: clientId } });
+exports.deleteClientService = deleteClientService;
+const createClientEtCommandeService = async (data) => {
+    const client = await prisma_config_1.prisma.client.create({
+        data: {
+            nom: data.nom,
+            prenom: data.prenom,
+            telephone: data.telephone,
+            adresse: data.adresse,
+            adresseLivraison: data.adresseLivraison,
+            telephoneDestinataire: data.telephoneDestinataire,
+        },
+    });
+    const commande = await (0, exports.createCommandeService)({
+        clientId: client.id,
+        adresseLivraison: data.adresseLivraison,
+    });
+    return { client, commande };
+};
+exports.createClientEtCommandeService = createClientEtCommandeService;
+// ===== SUPPRIMER UNE COMMANDE =====
+const deleteCommandeService = async (commandeId) => prisma_config_1.prisma.commande.delete({ where: { id: commandeId } });
+exports.deleteCommandeService = deleteCommandeService;
 // ===== DISTANCE À VOL D'OISEAU (Haversine) =====
 function getDistanceKm(lat1, lon1, lat2, lon2) {
     const R = 6371;

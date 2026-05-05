@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.createOrGetClient = exports.getClients = void 0;
+exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
 const service = __importStar(require("../services/adminService"));
 // ===== CLIENTS =====
 const getClients = async (req, res) => {
@@ -46,15 +46,10 @@ const getClients = async (req, res) => {
     }
 };
 exports.getClients = getClients;
-const createOrGetClient = async (req, res) => {
-    try {
-        res.json(await service.createOrGetClientService(req.body));
-    }
-    catch (e) {
-        res.status(400).json({ error: e.message });
-    }
-};
-exports.createOrGetClient = createOrGetClient;
+/* export const createOrGetClient = async (req: Request, res: Response) => {
+  try { res.json(await service.createOrGetClientService(req.body)); }
+  catch (e: any) { res.status(400).json({ error: e.message }); }
+}; */
 const updateClient = async (req, res) => {
     try {
         const { clientId } = req.params;
@@ -86,6 +81,59 @@ const getCommandes = async (req, res) => {
     }
 };
 exports.getCommandes = getCommandes;
+const deleteClient = async (req, res) => {
+    try {
+        const { clientId } = req.params;
+        await service.deleteClientService(Number(clientId));
+        res.json({ message: "Client supprimé avec succès" });
+    }
+    catch (e) {
+        console.error(e);
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.deleteClient = deleteClient;
+// ===== CRÉER CLIENT + COMMANDE =====
+const createClientEtCommande = async (req, res) => {
+    try {
+        const { nom, prenom, telephone, adresse, adresseLivraison, telephoneDestinataire } = req.body;
+        if (!nom || !prenom || !telephone || !adresse || !adresseLivraison || !telephoneDestinataire) {
+            return res.status(400).json({
+                error: "nom, prenom, telephone, adresse, adresseLivraison et telephoneDestinataire sont requis",
+            });
+        }
+        const result = await service.createClientEtCommandeService({
+            nom,
+            prenom,
+            telephone,
+            adresse,
+            adresseLivraison,
+            telephoneDestinataire,
+        });
+        res.status(201).json({
+            message: "Client et commande créés avec succès",
+            ...result,
+        });
+    }
+    catch (e) {
+        console.error(e);
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.createClientEtCommande = createClientEtCommande;
+// ===== SUPPRIMER UNE COMMANDE =====
+const deleteCommande = async (req, res) => {
+    try {
+        const { commandeId } = req.params;
+        await service.deleteCommandeService(Number(commandeId));
+        res.json({ message: "Commande supprimée avec succès" });
+    }
+    catch (e) {
+        console.error(e);
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.deleteCommande = deleteCommande;
 // ===== COMMANDES =====
 const createCommande = async (req, res) => {
     try {

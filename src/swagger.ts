@@ -5,7 +5,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
 
   info: {
     title: "MOTO EXPRESS API",
-    version: "1.5.0",
+    version: "1.6.0",
     description:
       "API livraison moto - Dakar et Saint-Louis (gestion commandes, clients, livreurs, paiements, blocages, navigation Mapbox)",
   },
@@ -126,13 +126,13 @@ export const swaggerDocument: OpenAPIV3.Document = {
     },
 
     // ═══════════════════════════════════════════
-    // ADMIN
+    // ADMIN — CLIENTS
     // ═══════════════════════════════════════════
     "/admin/clients": {
       get: {
         tags: ["Admin"],
         security: [{ bearerAuth: [] }],
-        summary: "Liste clients",
+        summary: "Liste tous les clients",
         responses: {
           "200": {
             description: "Liste des clients",
@@ -147,23 +147,184 @@ export const swaggerDocument: OpenAPIV3.Document = {
       post: {
         tags: ["Admin"],
         security: [{ bearerAuth: [] }],
-        summary: "Créer client",
+        summary: "Créer ou récupérer un client (par téléphone)",
         description:
-          "Lat/lng récupérés automatiquement depuis la carte pour adresse et adresseLivraison",
+          "Si un client avec ce numéro de téléphone existe déjà, le retourne. Sinon, le crée.",
         requestBody: {
+          required: true,
           content: {
             "application/json": { schema: { $ref: "#/components/schemas/ClientCreate" } },
           },
         },
-        responses: { "201": { description: "Client créé" } },
+        responses: {
+          "200": {
+            description: "Client créé ou existant retourné",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Client" } },
+            },
+          },
+          "400": { description: "Champs manquants ou invalides" },
+        },
       },
     },
 
+    "/admin/clients/{clientId}": {
+      put: {
+        tags: ["Admin"],
+        security: [{ bearerAuth: [] }],
+        summary: "Mettre à jour un client",
+        parameters: [
+          {
+            name: "clientId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 1 },
+            description: "ID du client à mettre à jour",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": { schema: { $ref: "#/components/schemas/ClientUpdate" } },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Client mis à jour",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Client" } },
+            },
+          },
+          "400": { description: "Erreur de mise à jour" },
+          "404": { description: "Client introuvable" },
+        },
+      },
+      delete: {
+        tags: ["Admin"],
+        security: [{ bearerAuth: [] }],
+        summary: "Supprimer un client",
+        parameters: [
+          {
+            name: "clientId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 1 },
+            description: "ID du client à supprimer",
+          },
+        ],
+        responses: {
+          "200": { description: "Client supprimé avec succès" },
+          "400": { description: "Erreur lors de la suppression" },
+          "404": { description: "Client introuvable" },
+        },
+      },
+    },
+
+    "/admin/clients/{clientId}/historique": {
+      get: {
+        tags: ["Admin"],
+        security: [{ bearerAuth: [] }],
+        summary: "Historique des commandes d'un client",
+        parameters: [
+          {
+            name: "clientId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 1 },
+            description: "ID du client",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Liste des commandes du client",
+            content: {
+              "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/Commande" } },
+              },
+            },
+          },
+          "400": { description: "Erreur" },
+        },
+      },
+    },
+
+    // ═══════════════════════════════════════════
+    // ADMIN — CLIENT + COMMANDE (endpoint combiné)
+    // ═══════════════════════════════════════════
+    "/admin/clients-commandes": {
+      post: {
+        tags: ["Admin"],
+        security: [{ bearerAuth: [] }],
+        summary: "Créer client + commande en une seule requête",
+        description:
+          "Crée un **nouveau client** sans vérifier si le numéro de téléphone existe déjà, puis crée automatiquement une commande associée. Le montant et la commission (10%) sont calculés automatiquement selon la distance entre l'adresse du client et l'adresse de livraison.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ClientEtCommandeCreate" },
+              example: {
+                nom: "Diallo",
+                prenom: "Fatou",
+                telephone: "771234567",
+                adresse: "Guet Ndar, Saint-Louis",
+                adresseLivraison: "Sor, Saint-Louis",
+                telephoneDestinataire: "761234567",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Client et commande créés avec succès",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ClientEtCommandeResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Champs manquants ou erreur de géocodage / adresse hors zone",
+          },
+        },
+      },
+    },
+
+    // ═══════════════════════════════════════════
+    // ADMIN — COMMANDES
+    // ═══════════════════════════════════════════
     "/admin/commandes": {
       get: {
         tags: ["Admin"],
         security: [{ bearerAuth: [] }],
-        summary: "Liste commandes",
+        summary: "Liste des commandes (filtres optionnels)",
+        parameters: [
+          {
+            name: "statut",
+            in: "query",
+            required: false,
+            schema: {
+              type: "string",
+              enum: ["en_attente", "en_cours", "livree"],
+              example: "en_attente",
+            },
+            description: "Filtrer par statut",
+          },
+          {
+            name: "dateDebut",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "date", example: "2025-01-01" },
+            description: "Filtrer à partir de cette date",
+          },
+          {
+            name: "dateFin",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "date", example: "2025-12-31" },
+            description: "Filtrer jusqu'à cette date",
+          },
+        ],
         responses: {
           "200": {
             description: "Liste des commandes",
@@ -178,14 +339,89 @@ export const swaggerDocument: OpenAPIV3.Document = {
       post: {
         tags: ["Admin"],
         security: [{ bearerAuth: [] }],
-        summary: "Créer commande",
-        description: "Montant et commission (10%) calculés automatiquement selon la distance",
+        summary: "Créer une commande pour un client existant",
+        description:
+          "Montant et commission (10%) calculés automatiquement selon la distance. Si `adresseLivraison` n'est pas fournie, l'adresse de livraison enregistrée du client est utilisée.",
         requestBody: {
+          required: true,
           content: {
             "application/json": { schema: { $ref: "#/components/schemas/CommandeCreate" } },
           },
         },
-        responses: { "201": { description: "Commande créée" } },
+        responses: {
+          "200": {
+            description: "Commande créée",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message: { type: "string", example: "Commande créée avec succès" },
+                    commande: { $ref: "#/components/schemas/Commande" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "clientId manquant ou adresse invalide" },
+          "404": { description: "Client introuvable" },
+        },
+      },
+    },
+
+    "/admin/commandes/{commandeId}": {
+      put: {
+        tags: ["Admin"],
+        security: [{ bearerAuth: [] }],
+        summary: "Mettre à jour une commande",
+        parameters: [
+          {
+            name: "commandeId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 1 },
+            description: "ID de la commande à mettre à jour",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CommandeUpdate" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Commande mise à jour",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Commande" } },
+            },
+          },
+          "400": { description: "Erreur de mise à jour" },
+          "404": { description: "Commande introuvable" },
+        },
+      },
+      delete: {
+        tags: ["Admin"],
+        security: [{ bearerAuth: [] }],
+        summary: "Supprimer une commande",
+        description:
+          "⚠️ Les livraisons associées doivent être supprimées au préalable si `onDelete: Cascade` n'est pas configuré dans le schéma Prisma.",
+        parameters: [
+          {
+            name: "commandeId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 1 },
+            description: "ID de la commande à supprimer",
+          },
+        ],
+        responses: {
+          "200": { description: "Commande supprimée avec succès" },
+          "400": { description: "Erreur lors de la suppression (ex: livraisons liées)" },
+          "404": { description: "Commande introuvable" },
+        },
       },
     },
 
@@ -193,8 +429,9 @@ export const swaggerDocument: OpenAPIV3.Document = {
       post: {
         tags: ["Admin"],
         security: [{ bearerAuth: [] }],
-        summary: "Assigner commande à livreur",
+        summary: "Assigner une commande à un livreur",
         requestBody: {
+          required: true,
           content: {
             "application/json": {
               schema: {
@@ -208,86 +445,162 @@ export const swaggerDocument: OpenAPIV3.Document = {
             },
           },
         },
-        responses: { "200": { description: "Commande assignée" } },
-      },
-    },
-
-    "/admin/commandes/payer-commission": {
-      put: {
-        tags: ["Paiements"],
-        security: [{ bearerAuth: [] }],
-        summary: "Marquer la commission d'une commande comme payée",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/CommandeCommissionUpdate" },
-            },
-          },
-        },
-        responses: { "200": { description: "Commission marquée comme payée" } },
-      },
-    },
-
-    "/admin/paiements": {
-      post: {
-        tags: ["Paiements"],
-        security: [{ bearerAuth: [] }],
-        summary: "Valider un paiement de commission livreur",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                required: ["paiementId"],
-                properties: { paiementId: { type: "integer", example: 3 } },
-              },
-            },
-          },
-        },
-        responses: { "200": { description: "Paiement validé" } },
-      },
-    },
-
-    "/admin/blocages": {
-      get: {
-        tags: ["Blocages"],
-        security: [{ bearerAuth: [] }],
-        summary: "Liste livreurs bloqués",
         responses: {
           "200": {
-            description: "Liste des livreurs bloqués",
+            description: "Commande assignée avec succès",
             content: {
               "application/json": {
                 schema: {
-                  type: "array",
-                  items: { $ref: "#/components/schemas/LivreurWithUser" },
+                  type: "object",
+                  properties: {
+                    message: { type: "string", example: "Commande assignée avec succès" },
+                    livraison: { $ref: "#/components/schemas/Livraison" },
+                  },
                 },
+              },
+            },
+          },
+          "400": { description: "commandeId ou livreurId manquant" },
+          "404": { description: "Commande introuvable" },
+        },
+      },
+    },
+
+    // ═══════════════════════════════════════════
+    // ADMIN — LIVREURS
+    // ═══════════════════════════════════════════
+    "/admin/livreurs": {
+      get: {
+        tags: ["Admin"],
+        security: [{ bearerAuth: [] }],
+        summary: "Liste de tous les livreurs",
+        responses: {
+          "200": {
+            description: "Liste des livreurs avec leurs infos utilisateur",
+            content: {
+              "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/LivreurWithUser" } },
               },
             },
           },
         },
       },
+    },
+
+    "/admin/livreurs/{livreurId}": {
+      get: {
+        tags: ["Admin"],
+        security: [{ bearerAuth: [] }],
+        summary: "Profil détaillé d'un livreur",
+        parameters: [
+          {
+            name: "livreurId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 2 },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Profil livreur",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/LivreurWithUser" },
+              },
+            },
+          },
+          "400": { description: "Erreur" },
+        },
+      },
+    },
+
+    "/admin/livreurs/{livreurId}/toggle": {
+      patch: {
+        tags: ["Admin"],
+        security: [{ bearerAuth: [] }],
+        summary: "Activer / désactiver le compte d'un livreur",
+        parameters: [
+          {
+            name: "livreurId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 2 },
+          },
+        ],
+        responses: {
+          "200": { description: "Statut du compte basculé" },
+          "400": { description: "Erreur" },
+        },
+      },
+    },
+
+    "/admin/livreurs/bloquer": {
       post: {
         tags: ["Blocages"],
         security: [{ bearerAuth: [] }],
-        summary: "Bloquer ou débloquer un livreur",
+        summary: "Bloquer un livreur",
         requestBody: {
+          required: true,
           content: {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["livreurId", "bloquer"],
+                required: ["livreurId", "raison"],
                 properties: {
                   livreurId: { type: "integer", example: 2 },
-                  bloquer: { type: "boolean", example: true },
+                  raison: { type: "string", example: "Comportement inapproprié signalé" },
                 },
               },
             },
           },
         },
-        responses: { "200": { description: "Statut de blocage modifié" } },
+        responses: {
+          "200": { description: "Livreur bloqué et compte désactivé" },
+          "400": { description: "Livreur introuvable" },
+        },
+      },
+    },
+
+    // ═══════════════════════════════════════════
+    // ADMIN — PAIEMENTS
+    // ═══════════════════════════════════════════
+    "/admin/paiements/payer": {
+      post: {
+        tags: ["Paiements"],
+        security: [{ bearerAuth: [] }],
+        summary: "Marquer les commissions d'un livreur pour un jour donné comme payées",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["livreurId", "date"],
+                properties: {
+                  livreurId: { type: "integer", example: 2 },
+                  date: { type: "string", format: "date", example: "2025-04-15" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Commissions du jour marquées comme payées",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message: { type: "string", example: "Commissions du 2025-04-15 marquées comme payées" },
+                    data: { $ref: "#/components/schemas/PaiementJourResponse" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "livreurId ou date manquant / format date invalide / aucune commission en attente" },
+        },
       },
     },
 
@@ -468,6 +781,42 @@ export const swaggerDocument: OpenAPIV3.Document = {
       },
     },
 
+    "/livreur/commandes": {
+      get: {
+        tags: ["Livreur"],
+        security: [{ bearerAuth: [] }],
+        summary: "Liste commandes assignées au livreur",
+        responses: {
+          "200": {
+            description: "Commandes du livreur",
+            content: {
+              "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/Commande" } },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    "/livreur/commandes/historique": {
+      get: {
+        tags: ["Livreur"],
+        security: [{ bearerAuth: [] }],
+        summary: "Historique des commandes livrées",
+        responses: {
+          "200": {
+            description: "Historique complet",
+            content: {
+              "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/Commande" } },
+              },
+            },
+          },
+        },
+      },
+    },
+
     // ═══════════════════════════════════════════
     // NAVIGATION MAPBOX 🗺️
     // ═══════════════════════════════════════════
@@ -623,63 +972,25 @@ export const swaggerDocument: OpenAPIV3.Document = {
         },
       },
     },
-
-    // ═══════════════════════════════════════════
-    // LIVREUR (héritage swagger v1)
-    // ═══════════════════════════════════════════
-    "/livreur/commandes": {
-      get: {
-        tags: ["Livreur"],
-        security: [{ bearerAuth: [] }],
-        summary: "Liste commandes assignées au livreur",
-        responses: {
-          "200": {
-            description: "Commandes du livreur",
-            content: {
-              "application/json": {
-                schema: { type: "array", items: { $ref: "#/components/schemas/Commande" } },
-              },
-            },
-          },
-        },
-      },
-    },
-
-    "/livreur/commandes/historique": {
-      get: {
-        tags: ["Livreur"],
-        security: [{ bearerAuth: [] }],
-        summary: "Historique des commandes livrées",
-        responses: {
-          "200": {
-            description: "Historique complet",
-            content: {
-              "application/json": {
-                schema: { type: "array", items: { $ref: "#/components/schemas/Commande" } },
-              },
-            },
-          },
-        },
-      },
-    },
   },
 
   // ═══════════════════════════════════════════
-  // SCHEMAS
+  // COMPONENTS / SCHEMAS
   // ═══════════════════════════════════════════
   components: {
     securitySchemes: { bearerAuth: { type: "http", scheme: "bearer" } },
 
     schemas: {
+      // ── Auth ────────────────────────────────
       RegisterAdmin: {
         type: "object",
         required: ["nom", "prenom", "email", "password", "role"],
         properties: {
-          nom: { type: "string", example: "Diallo" },
-          prenom: { type: "string", example: "Moussa" },
-          email: { type: "string", example: "admin@motoexpress.sn" },
+          nom:      { type: "string", example: "Diallo" },
+          prenom:   { type: "string", example: "Moussa" },
+          email:    { type: "string", example: "admin@motoexpress.sn" },
           password: { type: "string", example: "Admin1234!" },
-          role: { type: "string", enum: ["SUPERADMIN", "ADMIN"] },
+          role:     { type: "string", enum: ["SUPERADMIN", "ADMIN"] },
         },
       },
 
@@ -687,29 +998,28 @@ export const swaggerDocument: OpenAPIV3.Document = {
         type: "object",
         required: ["nom", "prenom", "telephone", "password", "role"],
         properties: {
-          nom: { type: "string", example: "Ndiaye" },
-          prenom: { type: "string", example: "Ibrahima" },
-          telephone: { type: "string", example: "771234567" },
-          password: { type: "string", example: "Livreur1234!" },
-          role: { type: "string", enum: ["LIVREUR"] },
-          statut: { type: "string", enum: ["actif", "inactif"] },
+          nom:        { type: "string", example: "Ndiaye" },
+          prenom:     { type: "string", example: "Ibrahima" },
+          telephone:  { type: "string", example: "771234567" },
+          password:   { type: "string", example: "Livreur1234!" },
+          role:       { type: "string", enum: ["LIVREUR"] },
+          statut:     { type: "string", enum: ["actif", "inactif"] },
           disponible: { type: "boolean", example: true },
         },
       },
 
+      // ── Client ──────────────────────────────
       Client: {
         type: "object",
         properties: {
-          nom: { type: "string" },
-          prenom: { type: "string" },
-          telephone: { type: "string" },
-          adresse: { type: "string" },
-          adresseLivraison: { type: "string" },
-          telephoneDestinataire: { type: "string" },
-          lat: { type: "number" },
-          lng: { type: "number" },
-          latLivraison: { type: "number" },
-          lngLivraison: { type: "number" },
+          id:                    { type: "integer", example: 1 },
+          nom:                   { type: "string", example: "Diallo" },
+          prenom:                { type: "string", example: "Fatou" },
+          telephone:             { type: "string", example: "771234567" },
+          adresse:               { type: "string", example: "Guet Ndar, Saint-Louis" },
+          adresseLivraison:      { type: "string", example: "Sor, Saint-Louis" },
+          telephoneDestinataire: { type: "string", example: "761234567" },
+          createdAt:             { type: "string", format: "date-time" },
         },
       },
 
@@ -717,92 +1027,154 @@ export const swaggerDocument: OpenAPIV3.Document = {
         type: "object",
         required: ["nom", "prenom", "telephone", "adresse", "adresseLivraison", "telephoneDestinataire"],
         properties: {
-          nom: { type: "string", example: "Fall" },
-          prenom: { type: "string", example: "Fatou" },
-          telephone: { type: "string", example: "781234567" },
-          adresse: { type: "string", example: "Almadies, Dakar" },
-          adresseLivraison: { type: "string", example: "Plateau, Dakar" },
+          nom:                   { type: "string", example: "Fall" },
+          prenom:                { type: "string", example: "Fatou" },
+          telephone:             { type: "string", example: "781234567" },
+          adresse:               { type: "string", example: "Guet Ndar, Saint-Louis" },
+          adresseLivraison:      { type: "string", example: "Sor, Saint-Louis" },
           telephoneDestinataire: { type: "string", example: "761234567" },
         },
       },
 
+      ClientUpdate: {
+        type: "object",
+        description: "Tous les champs sont optionnels pour la mise à jour",
+        properties: {
+          nom:                   { type: "string", example: "Fall" },
+          prenom:                { type: "string", example: "Fatou" },
+          telephone:             { type: "string", example: "781234567" },
+          adresse:               { type: "string", example: "Guet Ndar, Saint-Louis" },
+          adresseLivraison:      { type: "string", example: "Sor, Saint-Louis" },
+          telephoneDestinataire: { type: "string", example: "761234567" },
+        },
+      },
+
+      // ── Client + Commande combiné ────────────
+      ClientEtCommandeCreate: {
+        type: "object",
+        required: ["nom", "prenom", "telephone", "adresse", "adresseLivraison", "telephoneDestinataire"],
+        properties: {
+          nom:                   { type: "string", example: "Diallo" },
+          prenom:                { type: "string", example: "Fatou" },
+          telephone:             { type: "string", example: "771234567" },
+          adresse:               { type: "string", example: "Guet Ndar, Saint-Louis" },
+          adresseLivraison:      { type: "string", example: "Sor, Saint-Louis" },
+          telephoneDestinataire: { type: "string", example: "761234567" },
+        },
+      },
+
+      ClientEtCommandeResponse: {
+        type: "object",
+        properties: {
+          message:  { type: "string", example: "Client et commande créés avec succès" },
+          client:   { $ref: "#/components/schemas/Client" },
+          commande: { $ref: "#/components/schemas/Commande" },
+        },
+      },
+
+      // ── Commande ────────────────────────────
       Commande: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 1 },
-          clientId: { type: "integer", example: 3 },
-          montant: { type: "number", example: 2500 },
-          commission: { type: "number", example: 250 },
+          id:             { type: "integer", example: 1 },
+          clientId:       { type: "integer", example: 3 },
+          montant:        { type: "number", example: 2500 },
+          commission:     { type: "number", example: 250 },
           commissionPaye: { type: "boolean", example: false },
-          statut: { type: "string", enum: ["en_attente", "en_cours", "livree"] },
+          statut: {
+            type: "string",
+            enum: ["en_attente", "en_cours", "livree"],
+            example: "en_attente",
+          },
           createdAt: { type: "string", format: "date-time" },
         },
       },
 
       CommandeCreate: {
         type: "object",
-        required: ["clientId", "adresseLivraison"],
+        required: ["clientId"],
         properties: {
           clientId: { type: "integer", example: 3 },
-          adresseLivraison: { type: "string", example: "Medina, Dakar" },
+          adresseLivraison: {
+            type: "string",
+            example: "Sor, Saint-Louis",
+            description: "Optionnel — utilise l'adresse de livraison du client si absent",
+          },
         },
       },
 
-      CommandeCommissionUpdate: {
+      CommandeUpdate: {
         type: "object",
-        required: ["commandeId"],
+        description: "Tous les champs sont optionnels pour la mise à jour",
         properties: {
-          commandeId: { type: "integer", example: 1 },
+          statut: {
+            type: "string",
+            enum: ["en_attente", "en_cours", "livree"],
+            example: "en_cours",
+          },
+          commissionPaye: { type: "boolean", example: true },
         },
       },
 
+      // ── Livraison ───────────────────────────
       Livraison: {
         type: "object",
         properties: {
-          id: { type: "integer", example: 5 },
-          commandeId: { type: "integer", example: 1 },
-          livreurId: { type: "integer", example: 2 },
-          statut: { type: "string", enum: ["en_cours", "livree"], example: "livree" },
-          dateLivraison: { type: "string", format: "date-time", nullable: true },
+          id:             { type: "integer", example: 5 },
+          commandeId:     { type: "integer", example: 1 },
+          livreurId:      { type: "integer", example: 2 },
+          statut:         { type: "string", enum: ["en_cours", "livree"], example: "livree" },
+          dateLivraison:  { type: "string", format: "date-time", nullable: true },
           destinationLat: { type: "number", example: 14.6789, nullable: true },
           destinationLng: { type: "number", example: -17.4412, nullable: true },
         },
       },
 
+      // ── Livreur ─────────────────────────────
       LivreurWithUser: {
         type: "object",
         properties: {
-          id: { type: "integer" },
-          disponible: { type: "boolean" },
-          estBloque: { type: "boolean" },
+          id:            { type: "integer" },
+          disponible:    { type: "boolean" },
+          estBloque:     { type: "boolean" },
           commissionDue: { type: "number" },
-          latActuelle: { type: "number", nullable: true, description: "📍 Position GPS temps réel" },
-          lngActuelle: { type: "number", nullable: true },
-          user: { $ref: "#/components/schemas/RegisterLivreur" },
+          latActuelle:   { type: "number", nullable: true, description: "📍 Position GPS temps réel" },
+          lngActuelle:   { type: "number", nullable: true },
+          user:          { $ref: "#/components/schemas/RegisterLivreur" },
         },
       },
 
+      // ── Paiements ───────────────────────────
       PaiementCommission: {
         type: "object",
         properties: {
-          id: { type: "integer" },
+          id:        { type: "integer" },
           livreurId: { type: "integer" },
-          montant: { type: "number" },
-          statut: { type: "string", enum: ["en_attente", "payé"] },
+          montant:   { type: "number" },
+          statut:    { type: "string", enum: ["en_attente", "payee"] },
+        },
+      },
+
+      PaiementJourResponse: {
+        type: "object",
+        properties: {
+          livreurId:       { type: "integer", example: 2 },
+          date:            { type: "string", format: "date", example: "2025-04-15" },
+          montantTotal:    { type: "number", example: 1500.50 },
+          commandesPayees: { type: "integer", example: 6 },
         },
       },
 
       RevenusResponse: {
         type: "object",
         properties: {
-          total: { type: "number", example: 25000, description: "Total brut des montants livrés" },
+          total:         { type: "number", example: 25000, description: "Total brut des montants livrés" },
           commissionDue: { type: "number", example: 2500 },
-          net: { type: "number", example: 22500, description: "Total - commission" },
+          net:           { type: "number", example: 22500, description: "Total - commission" },
         },
       },
 
-      // ── Navigation Schemas ────────────────────
-
+      // ── Navigation ──────────────────────────
       AccepterMissionBody: {
         type: "object",
         required: ["commandeId"],
@@ -846,7 +1218,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
                 type: "array",
                 items: { $ref: "#/components/schemas/EtapeNavigation" },
               },
-              eta: { type: "string", format: "date-time", example: "2025-04-06T10:32:00.000Z" },
+              eta:         { type: "string", format: "date-time", example: "2025-04-06T10:32:00.000Z" },
               destination: {
                 type: "object",
                 properties: {
@@ -865,8 +1237,8 @@ export const swaggerDocument: OpenAPIV3.Document = {
         required: ["livraisonId", "lat", "lng"],
         properties: {
           livraisonId: { type: "integer", example: 5 },
-          lat: { type: "number", example: 14.6928 },
-          lng: { type: "number", example: -17.4467 },
+          lat:         { type: "number", example: 14.6928 },
+          lng:         { type: "number", example: -17.4467 },
         },
       },
 
@@ -886,14 +1258,14 @@ export const swaggerDocument: OpenAPIV3.Document = {
               geometry: {
                 type: "object",
                 properties: {
-                  type: { type: "string", example: "LineString" },
+                  type:        { type: "string", example: "LineString" },
                   coordinates: { type: "array", items: { type: "array", items: { type: "number" } } },
                 },
               },
-              etapes: { type: "array", items: { $ref: "#/components/schemas/EtapeNavigation" } },
-              distanceTotale: { type: "number", example: 3400 },
-              dureeTotale: { type: "number", example: 720 },
-              eta: { type: "string", format: "date-time" },
+              etapes:               { type: "array", items: { $ref: "#/components/schemas/EtapeNavigation" } },
+              distanceTotale:       { type: "number", example: 3400 },
+              dureeTotale:          { type: "number", example: 720 },
+              eta:                  { type: "string", format: "date-time" },
               congestionsDetectees: { type: "boolean", example: false },
             },
           },
@@ -904,12 +1276,9 @@ export const swaggerDocument: OpenAPIV3.Document = {
       InstructionResponse: {
         type: "object",
         properties: {
-          instruction: {
-            type: "string",
-            example: "Tournez à gauche sur Avenue Bourguiba",
-          },
-          distanceProchainVirage: { type: "integer", example: 180, description: "en mètres" },
-          eta: { type: "string", format: "date-time" },
+          instruction:             { type: "string", example: "Tournez à gauche sur Avenue Bourguiba" },
+          distanceProchainVirage:  { type: "integer", example: 180, description: "en mètres" },
+          eta:                     { type: "string", format: "date-time" },
           instructionVocale: {
             type: "string",
             example: "Dans 180 mètres, tournez à gauche sur avenue bourguiba",
@@ -921,9 +1290,9 @@ export const swaggerDocument: OpenAPIV3.Document = {
       ETAResponse: {
         type: "object",
         properties: {
-          eta: { type: "string", format: "date-time", example: "2025-04-06T10:38:00.000Z" },
-          distanceRestanteMetres: { type: "integer", example: 1200 },
-          dureeRestanteSecondes: { type: "integer", example: 420 },
+          eta:                     { type: "string", format: "date-time", example: "2025-04-06T10:38:00.000Z" },
+          distanceRestanteMetres:  { type: "integer", example: 1200 },
+          dureeRestanteSecondes:   { type: "integer", example: 420 },
           congestionsDetectees: {
             type: "boolean",
             example: true,
@@ -936,8 +1305,8 @@ export const swaggerDocument: OpenAPIV3.Document = {
         type: "object",
         properties: {
           instruction: { type: "string", example: "Continuez tout droit sur la RN1" },
-          distance: { type: "integer", example: 450, description: "en mètres" },
-          duree: { type: "integer", example: 90, description: "en secondes" },
+          distance:    { type: "integer", example: 450, description: "en mètres" },
+          duree:       { type: "integer", example: 90, description: "en secondes" },
           coordonnees: {
             type: "object",
             properties: {
@@ -951,10 +1320,10 @@ export const swaggerDocument: OpenAPIV3.Document = {
       ResumeNavigation: {
         type: "object",
         properties: {
-          distanceKm: { type: "string", example: "3.4" },
-          dureeMinutes: { type: "integer", example: 12 },
-          eta: { type: "string", format: "date-time" },
-          nombreEtapes: { type: "integer", example: 8 },
+          distanceKm:    { type: "string", example: "3.4" },
+          dureeMinutes:  { type: "integer", example: 12 },
+          eta:           { type: "string", format: "date-time" },
+          nombreEtapes:  { type: "integer", example: 8 },
           alerte: {
             type: "string",
             nullable: true,

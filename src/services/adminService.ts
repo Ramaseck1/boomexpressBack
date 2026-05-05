@@ -8,12 +8,12 @@ const TARIF_BASE = 300;
 // ===== CLIENTS =====
 export const getClientsService = async () => prisma.client.findMany();
 
-export const createOrGetClientService = async (data: any) => {
+/* export const createOrGetClientService = async (data: any) => {
   let client = await prisma.client.findUnique({ where: { telephone: data.telephone } });
   if (!client) client = await prisma.client.create({ data });
   return client;
 };
-
+ */
 export const updateClientService = async (clientId: number, data: any) =>
   prisma.client.update({ where: { id: clientId }, data });
 
@@ -22,6 +22,37 @@ export const getClientHistoriqueService = async (clientId: number) =>
 
 export const getClientByIdService = async (clientId: number) =>
   prisma.client.findUnique({ where: { id: clientId } });
+
+export const deleteClientService = async (clientId: number) =>
+  prisma.client.delete({ where: { id: clientId } });
+
+
+export const createClientEtCommandeService = async (data: any) => {
+  const client = await prisma.client.create({
+    data: {
+      nom:                   data.nom,
+      prenom:                data.prenom,
+      telephone:             data.telephone,
+      adresse:               data.adresse,
+      adresseLivraison:      data.adresseLivraison,
+      telephoneDestinataire: data.telephoneDestinataire,
+    },
+  });
+
+  const commande = await createCommandeService({
+    clientId:         client.id,
+    adresseLivraison: data.adresseLivraison,
+  });
+
+  return { client, commande };
+};
+
+// ===== SUPPRIMER UNE COMMANDE =====
+export const deleteCommandeService = async (commandeId: number) =>
+  prisma.commande.delete({ where: { id: commandeId } });
+
+
+
 
 // ===== DISTANCE À VOL D'OISEAU (Haversine) =====
 function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -333,7 +364,6 @@ export const marquerPaiementLivreurByLivreurService = async (livreurId: number) 
 
   return { livreurId, montantTotal, commandesPayees: commandes.length };
 };
-
 // ===== PAIEMENTS — Payer les commissions d'un jour précis =====
 export const marquerPaiementJourService = async (livreurId: number, date: string) => {
   const debut = new Date(date); debut.setHours(0, 0, 0, 0);

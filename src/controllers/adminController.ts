@@ -9,10 +9,10 @@ catch (e: any) {
   res.status(400).json({ error: e.message });
 }};
 
-export const createOrGetClient = async (req: Request, res: Response) => {
+/* export const createOrGetClient = async (req: Request, res: Response) => {
   try { res.json(await service.createOrGetClientService(req.body)); } 
   catch (e: any) { res.status(400).json({ error: e.message }); }
-};
+}; */
 
 export const updateClient = async (req: Request, res: Response) => {
   try {
@@ -36,6 +36,59 @@ catch (e: any) {
   res.status(400).json({ error: e.message });
 }};
 
+
+export const deleteClient = async (req: Request, res: Response) => {
+  try {
+    const { clientId } = req.params;
+    await service.deleteClientService(Number(clientId));
+    res.json({ message: "Client supprimé avec succès" });
+  } catch (e: any) {
+    console.error(e);
+    res.status(400).json({ error: e.message });
+  }
+};
+
+// ===== CRÉER CLIENT + COMMANDE =====
+export const createClientEtCommande = async (req: Request, res: Response) => {
+  try {
+    const { nom, prenom, telephone, adresse, adresseLivraison, telephoneDestinataire } = req.body;
+
+    if (!nom || !prenom || !telephone || !adresse || !adresseLivraison || !telephoneDestinataire) {
+      return res.status(400).json({
+        error: "nom, prenom, telephone, adresse, adresseLivraison et telephoneDestinataire sont requis",
+      });
+    }
+
+    const result = await service.createClientEtCommandeService({
+      nom,
+      prenom,
+      telephone,
+      adresse,
+      adresseLivraison,
+      telephoneDestinataire,
+    });
+
+    res.status(201).json({
+      message: "Client et commande créés avec succès",
+      ...result,
+    });
+  } catch (e: any) {
+    console.error(e);
+    res.status(400).json({ error: e.message });
+  }
+};
+
+// ===== SUPPRIMER UNE COMMANDE =====
+export const deleteCommande = async (req: Request, res: Response) => {
+  try {
+    const { commandeId } = req.params;
+    await service.deleteCommandeService(Number(commandeId));
+    res.json({ message: "Commande supprimée avec succès" });
+  } catch (e: any) {
+    console.error(e);
+    res.status(400).json({ error: e.message });
+  }
+};
  
 // ===== COMMANDES =====
 export const createCommande = async (req: Request, res: Response) => {

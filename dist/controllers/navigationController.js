@@ -44,10 +44,14 @@ const mapboxService_1 = require("../services/MapboxNavigation/mapboxService");
 const demarrerNavigation = async (req, res) => {
     try {
         const { livraisonId, lat, lng } = req.body;
-        if (!livraisonId) {
-            return res.status(400).json({ error: "livraisonId est requis" });
+        if (!livraisonId || lat === undefined || lng === undefined) {
+            return res.status(400).json({
+                error: "livraisonId, lat et lng sont requis",
+            });
         }
-        const data = await navService.demarrerNavigationService(livraisonId);
+        // ✅ Phase 1 — guider le livreur vers l'adresse de COLLECTE
+        const data = await navService.guiderVersCollecteService(Number(livraisonId), { lat: Number(lat), lng: Number(lng) } // position GPS du livreur
+        );
         res.json(data);
     }
     catch (error) {

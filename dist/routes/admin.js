@@ -42,13 +42,16 @@ router.use((0, authMiddleware_1.authenticate)(["ADMIN", "SUPERADMIN"])); // ✅
 router.use(adminMiddleware_1.authorizeAdmin);
 // Clients
 router.get("/clients", controller.getClients);
-router.post("/clients", controller.createOrGetClient);
-router.put("/clients/:clientId", controller.updateClient);
+/* router.post("/clients", controller.createOrGetClient);
+ */ router.put("/clients/:clientId", controller.updateClient);
+router.delete("/clients/:clientId", controller.deleteClient); // ✅ nouveau
 router.get("/clients/:clientId/historique", controller.getClientHistorique);
+router.post("/clients-commandes", controller.createClientEtCommande); // ✅ nouveau
 // Commandes
 router.get("/commandes", controller.getCommandes);
 router.post("/commandes", controller.createCommande);
 router.put("/commandes/:commandeId", controller.updateCommande);
+router.delete("/commandes/:commandeId", controller.deleteCommande); // ✅ nouveau
 router.post("/commandes/assigner", controller.assignerCommande);
 // Livreurs
 router.get("/livreurs", controller.getLivreurs);
