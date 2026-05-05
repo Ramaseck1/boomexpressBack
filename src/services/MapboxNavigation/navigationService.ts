@@ -16,11 +16,20 @@ export const guiderVersCollecteService = async (
   livraisonId: number,
   positionLivreur: Coordonnees
 ) => {
+  // ✅ Garde : rejeter une position GPS invalide (0,0 = milieu de l'océan)
+  if (
+    !positionLivreur ||
+    Math.abs(positionLivreur.lat) < 0.001 ||
+    Math.abs(positionLivreur.lng) < 0.001
+  ) {
+    throw new Error(
+      `Position livreur invalide reçue (lat=${positionLivreur?.lat}, lng=${positionLivreur?.lng}). GPS non prêt.`
+    );
+  }
+
   const livraison = await prisma.livraison.findUnique({
     where: { id: livraisonId },
-    include: {
-      commande: { include: { client: true } },
-    },
+    include: { commande: { include: { client: true } } },
   });
 
   if (!livraison) throw new Error("Livraison introuvable");
@@ -28,13 +37,16 @@ export const guiderVersCollecteService = async (
   const adresseCollecte = livraison.commande.client.adresse;
   if (!adresseCollecte) throw new Error("Adresse de collecte manquante");
 
-  // Géocoder l'adresse de collecte (là où se trouve le client commandeur)
   const collecteCoords = await geocoderAdresse(adresseCollecte);
 
-  // Route : position GPS du livreur → adresse de collecte
+  // ✅ Log pour confirmer les deux bornes de la route
+  console.log(`[Phase 1] Calcul route :`);
+  console.log(`  DÉPART   (livreur)  : lat=${positionLivreur.lat}, lng=${positionLivreur.lng}`);
+  console.log(`  ARRIVÉE  (collecte) : lat=${collecteCoords.lat}, lng=${collecteCoords.lng} — "${adresseCollecte}"`);
+
+  // ✅ livreur GPS → adresse collecte (jamais collecte → livraison)
   const route = await calculerRoute([positionLivreur, collecteCoords], "driving-traffic");
 
-  // Sauvegarder la destination de collecte en base pour le suivi
   await prisma.livraison.update({
     where: { id: livraisonId },
     data: {

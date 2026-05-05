@@ -51,22 +51,22 @@ export const accepterMission = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const { commandeId, lat, lng } = req.body;
- 
+
     const positionLivreur =
       lat !== undefined && lng !== undefined ? { lat, lng } : undefined;
- 
+
     const data = await service.accepterMissionService(
       userId,
       commandeId,
       positionLivreur // 📍 Transmis au service → déclenche Mapbox si présent
     );
- 
+
     res.json(data);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
 };
- 
+
 
 // 🚀 Démarrer la livraison (Phase 2)
 export const demarrerLivraison = async (req: Request, res: Response) => {
@@ -92,7 +92,7 @@ export const demarrerLivraison = async (req: Request, res: Response) => {
       positionActuelle
     );
 
-  res.status(200).json(data);
+    res.status(200).json(data);
 
   } catch (error: any) {
     console.error("❌ Erreur démarrage livraison :", error);
@@ -104,7 +104,7 @@ export const demarrerLivraison = async (req: Request, res: Response) => {
   }
 };
 
-// Accepter mission
+
 
 
 // Confirmer livraison
@@ -123,7 +123,7 @@ export const confirmerLivraison = async (req: Request, res: Response) => {
     // ✅ 3. Réponse propre
     res.status(200).json({
       message: "Livraison confirmée",
-      
+
       data,
     });
 
@@ -138,40 +138,40 @@ export const confirmerLivraison = async (req: Request, res: Response) => {
 };
 
 export const annulerMission = async (
-req: Request,
-res: Response
+  req: Request,
+  res: Response
 ) => {
 
-try {
+  try {
 
-const { livraisonId } = req.body;
+    const { livraisonId } = req.body;
 
-if (!livraisonId) {
-return res.status(400).json({
-message: "livraisonId requis"
-});
-}
+    if (!livraisonId) {
+      return res.status(400).json({
+        message: "livraisonId requis"
+      });
+    }
 
-const data = await service.annulerMissionService(
-Number(livraisonId)
-);
+    const data = await service.annulerMissionService(
+      Number(livraisonId)
+    );
 
-res.status(200).json({
-message: "Mission annulée",
-data
-});
+    res.status(200).json({
+      message: "Mission annulée",
+      data
+    });
 
-}
-catch(error:any){
+  }
+  catch (error: any) {
 
-console.error("Erreur annulation :", error);
+    console.error("Erreur annulation :", error);
 
-res.status(500).json({
-message: "Erreur annulation mission",
-error: error.message
-});
+    res.status(500).json({
+      message: "Erreur annulation mission",
+      error: error.message
+    });
 
-}
+  }
 
 };
 

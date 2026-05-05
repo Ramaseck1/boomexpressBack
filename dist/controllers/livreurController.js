@@ -124,7 +124,6 @@ const demarrerLivraison = async (req, res) => {
     }
 };
 exports.demarrerLivraison = demarrerLivraison;
-// Accepter mission
 // Confirmer livraison
 const confirmerLivraison = async (req, res) => {
     try {
