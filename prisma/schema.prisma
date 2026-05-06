@@ -66,15 +66,6 @@ model Livreur {
   dateNaissance DateTime?
   estVerifie Boolean @default(false)
 
-  // 🚗 DOCUMENTS VEHICULE (OPTIONNEL POUR LE MOMENT)
-  permis String?        // photo permis
-  carteGrise String?    // photo carte grise
-  assurance String?     // photo assurance
-
-  // 🚦 STATUT VALIDATION DOCUMENTS
-  permisValide Boolean @default(false)
-  carteGriseValide Boolean @default(false)
-  assuranceValide Boolean @default(false)
   commissionDue    Float     @default(0)
   estBloque        Boolean   @default(false)
   derniereActivite DateTime?
