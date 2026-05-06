@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
+exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
 const service = __importStar(require("../services/adminService"));
 // ===== CLIENTS =====
 const getClients = async (req, res) => {
@@ -266,3 +266,55 @@ const bloquerLivreur = async (req, res) => {
     }
 };
 exports.bloquerLivreur = bloquerLivreur;
+const uploadDocumentsLivreur = async (req, res) => {
+    try {
+        const { livreurId } = req.params;
+        // ✅ Correct cast pour uploadDocuments.fields([...])
+        const files = req.files;
+        if (!files || Object.keys(files).length === 0)
+            return res.status(400).json({ error: "Aucun fichier reçu" });
+        const docs = await service.uploadDocumentsLivreurService(Number(livreurId), files);
+        res.json({ message: "Documents uploadés avec succès", documents: docs });
+    }
+    catch (e) {
+        console.error(e);
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.uploadDocumentsLivreur = uploadDocumentsLivreur;
+const validerProfilLivreur = async (req, res) => {
+    try {
+        const { livreurId } = req.params;
+        const livreur = await service.validerProfilLivreurService(Number(livreurId));
+        res.json({ message: "Profil validé avec succès", livreur });
+    }
+    catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.validerProfilLivreur = validerProfilLivreur;
+const getDocumentsLivreur = async (req, res) => {
+    try {
+        const { livreurId } = req.params;
+        const docs = await service.getDocumentsLivreurService(Number(livreurId));
+        res.json(docs);
+    }
+    catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.getDocumentsLivreur = getDocumentsLivreur;
+const supprimerDocument = async (req, res) => {
+    try {
+        const { livreurId } = req.params;
+        const { type } = req.body; // "cni_recto" | "permis" | etc.
+        if (!type)
+            return res.status(400).json({ error: "type requis" });
+        const result = await service.supprimerDocumentService(Number(livreurId), type);
+        res.json({ message: "Document supprimé", document: result });
+    }
+    catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.supprimerDocument = supprimerDocument;

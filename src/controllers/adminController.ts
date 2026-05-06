@@ -206,3 +206,55 @@ export const bloquerLivreur = async (req: Request, res: Response) => {
   try { res.json(await service.bloquerLivreurService(req.body)); } 
   catch (e: any) { res.status(400).json({ error: e.message }); }
 };
+
+
+export const uploadDocumentsLivreur = async (req: Request, res: Response) => {
+  try {
+    const { livreurId } = req.params;
+
+    // ✅ Correct cast pour uploadDocuments.fields([...])
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+    if (!files || Object.keys(files).length === 0)
+      return res.status(400).json({ error: "Aucun fichier reçu" });
+
+    const docs = await service.uploadDocumentsLivreurService(Number(livreurId), files);
+    res.json({ message: "Documents uploadés avec succès", documents: docs });
+  } catch (e: any) {
+    console.error(e);
+    res.status(400).json({ error: e.message });
+  }
+};
+export const validerProfilLivreur = async (req: Request, res: Response) => {
+  try {
+    const { livreurId } = req.params;
+    const livreur = await service.validerProfilLivreurService(Number(livreurId));
+    res.json({ message: "Profil validé avec succès", livreur });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+};
+
+export const getDocumentsLivreur = async (req: Request, res: Response) => {
+  try {
+    const { livreurId } = req.params;
+    const docs = await service.getDocumentsLivreurService(Number(livreurId));
+    res.json(docs);
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+};
+
+export const supprimerDocument = async (req: Request, res: Response) => {
+  try {
+    const { livreurId } = req.params;
+    const { type } = req.body; // "cni_recto" | "permis" | etc.
+
+    if (!type) return res.status(400).json({ error: "type requis" });
+
+    const result = await service.supprimerDocumentService(Number(livreurId), type);
+    res.json({ message: "Document supprimé", document: result });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+};

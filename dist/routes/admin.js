@@ -37,31 +37,38 @@ const express_1 = require("express");
 const controller = __importStar(require("../controllers/adminController"));
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const adminMiddleware_1 = require("../middleware/adminMiddleware");
+const uploadDocuments_1 = require("../middleware/uploadDocuments");
 const router = (0, express_1.Router)();
-router.use((0, authMiddleware_1.authenticate)(["ADMIN", "SUPERADMIN"])); // ✅
+router.use((0, authMiddleware_1.authenticate)(["ADMIN", "SUPERADMIN"]));
 router.use(adminMiddleware_1.authorizeAdmin);
 // Clients
 router.get("/clients", controller.getClients);
-/* router.post("/clients", controller.createOrGetClient);
- */ router.put("/clients/:clientId", controller.updateClient);
-router.delete("/clients/:clientId", controller.deleteClient); // ✅ nouveau
+router.put("/clients/:clientId", controller.updateClient);
+router.delete("/clients/:clientId", controller.deleteClient);
 router.get("/clients/:clientId/historique", controller.getClientHistorique);
-router.post("/clients-commandes", controller.createClientEtCommande); // ✅ nouveau
+router.post("/clients-commandes", controller.createClientEtCommande);
 // Commandes
 router.get("/commandes", controller.getCommandes);
 router.post("/commandes", controller.createCommande);
 router.put("/commandes/:commandeId", controller.updateCommande);
-router.delete("/commandes/:commandeId", controller.deleteCommande); // ✅ nouveau
+router.delete("/commandes/:commandeId", controller.deleteCommande);
 router.post("/commandes/assigner", controller.assignerCommande);
 // Livreurs
 router.get("/livreurs", controller.getLivreurs);
 router.get("/livreurs/:livreurId", controller.getProfilLivreur);
 router.patch("/livreurs/:livreurId/toggle", controller.toggleCompteLivreur);
-// Bloquer un livreur
 router.post("/livreurs/bloquer", controller.bloquerLivreur);
-// Liste des paiements
-/* router.get("/paiements", controller.getPaiements);
- */ router.post("/paiements/payer", controller.marquerPaiementJour);
-/*  router.post("/paiements/payer-jour", controller.marquerPaiementJour);
- */
+// ✅ Documents livreur
+router.post("/livreurs/:livreurId/documents", uploadDocuments_1.uploadDocuments.fields([
+    { name: "cni_recto", maxCount: 1 },
+    { name: "cni_verso", maxCount: 1 },
+    { name: "permis", maxCount: 1 },
+    { name: "assurance", maxCount: 1 },
+    { name: "recepisse_moto", maxCount: 1 },
+]), controller.uploadDocumentsLivreur);
+router.get("/livreurs/:livreurId/documents", controller.getDocumentsLivreur);
+router.post("/livreurs/:livreurId/valider", controller.validerProfilLivreur);
+router.delete("/livreurs/:livreurId/documents", controller.supprimerDocument);
+// Paiements
+router.post("/paiements/payer", controller.marquerPaiementJour);
 exports.default = router;

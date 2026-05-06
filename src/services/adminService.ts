@@ -1,6 +1,33 @@
 import { prisma } from "../prisma/prisma.config";
 import axios from "axios";
 
+import cloudinary from "../config/cloudinary";
+import { Readable } from "stream";
+
+
+
+
+const uploadToCloudinary = (
+  file: Express.Multer.File,
+  folder: string,
+  publicId: string
+): Promise<{ url: string; publicId: string }> => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        public_id: publicId,
+        overwrite: true,
+        resource_type: "auto",
+      },
+      (error, result) => {
+        if (error || !result) return reject(error);
+        resolve({ url: result.secure_url, publicId: result.public_id });
+      }
+    );
+    Readable.from(file.buffer).pipe(uploadStream);
+  });
+};
 // ===== Tarifs =====
 const TARIF_KM = 100;
 const TARIF_BASE = 300;
@@ -417,4 +444,118 @@ export const bloquerLivreurService = async ({ livreurId, raison }: any) => {
   });
 
   return blocage;
+};
+
+
+
+//document
+export const uploadDocumentsLivreurService = async (
+  livreurId: number,
+  files: { [fieldname: string]: Express.Multer.File[] }
+) => {
+  const livreur = await prisma.livreur.findUnique({ where: { id: livreurId } });
+  if (!livreur) throw new Error("Livreur introuvable");
+
+  const get = (field: string) => files[field]?.[0];
+  const folder = `boom-express/livreurs/${livreurId}`;
+
+  const existing = await prisma.documentLivreur.findUnique({ where: { livreurId } });
+
+  if (!existing && (!get("cni_recto") || !get("cni_verso")))
+    throw new Error("CNI recto et verso sont obligatoires");
+
+  const data: any = { updatedAt: new Date() };
+
+  // Upload chaque fichier présent vers Cloudinary
+  const fields = [
+    { field: "cni_recto",      urlKey: "cniRectoUrl",       pidKey: "cniRectoPublicId" },
+    { field: "cni_verso",      urlKey: "cniVersoUrl",        pidKey: "cniVersoPublicId" },
+    { field: "permis",         urlKey: "permisUrl",          pidKey: "permisPublicId" },
+    { field: "assurance",      urlKey: "assuranceUrl",       pidKey: "assurancePublicId" },
+    { field: "recepisse_moto", urlKey: "recepisseUrl",       pidKey: "recepissePublicId" },
+  ];
+
+  for (const { field, urlKey, pidKey } of fields) {
+    const file = get(field);
+    if (file) {
+      const result = await uploadToCloudinary(file, folder, field);
+      data[urlKey] = result.url;
+      data[pidKey] = result.publicId;
+    }
+  }
+
+  return prisma.documentLivreur.upsert({
+    where:  { livreurId },
+    create: {
+      livreurId,
+      cniRectoUrl:       data.cniRectoUrl,
+      cniRectoPublicId:  data.cniRectoPublicId,
+      cniVersoUrl:       data.cniVersoUrl,
+      cniVersoPublicId:  data.cniVersoPublicId,
+      permisUrl:         data.permisUrl         ?? null,
+      permisPublicId:    data.permisPublicId     ?? null,
+      assuranceUrl:      data.assuranceUrl       ?? null,
+      assurancePublicId: data.assurancePublicId  ?? null,
+      recepisseUrl:      data.recepisseUrl       ?? null,
+      recepissePublicId: data.recepissePublicId  ?? null,
+    },
+    update: data,
+  });
+};
+
+
+// ===== VALIDER LE PROFIL LIVREUR =====
+export const validerProfilLivreurService = async (livreurId: number) => {
+  const docs = await prisma.documentLivreur.findUnique({ where: { livreurId } });
+
+  if (!docs || !docs.cniRectoUrl || !docs.cniVersoUrl)
+    throw new Error("CNI recto et verso obligatoires avant validation");
+
+  return prisma.livreur.update({
+    where:   { id: livreurId },
+    data:    { profilValide: true, estVerifie: true },
+    include: { user: true, documents: true },
+  });
+};
+
+// ===== RÉCUPÉRER LES DOCUMENTS D'UN LIVREUR =====
+export const getDocumentsLivreurService = async (livreurId: number) => {
+  return prisma.documentLivreur.findMany({
+    where:   { livreurId },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+// ===== SUPPRIMER UN DOCUMENT =====
+export const supprimerDocumentService = async (
+  livreurId: number,
+  type: "cni_recto" | "cni_verso" | "permis" | "assurance" | "recepisse_moto"
+) => {
+  const doc = await prisma.documentLivreur.findUnique({ where: { livreurId } });
+  if (!doc) throw new Error("Document introuvable");
+
+  const pidMap: Record<string, string | null> = {
+    cni_recto:      doc.cniRectoPublicId,
+    cni_verso:      doc.cniVersoPublicId,
+    permis:         doc.permisPublicId,
+    assurance:      doc.assurancePublicId,
+    recepisse_moto: doc.recepissePublicId,
+  };
+
+  const publicId = pidMap[type];
+  if (publicId) await cloudinary.uploader.destroy(publicId);
+
+  // Mettre le champ à null dans la DB
+  const nullMap: Record<string, any> = {
+    cni_recto:      { cniRectoUrl: null, cniRectoPublicId: null },
+    cni_verso:      { cniVersoUrl: null, cniVersoPublicId: null },
+    permis:         { permisUrl: null, permisPublicId: null },
+    assurance:      { assuranceUrl: null, assurancePublicId: null },
+    recepisse_moto: { recepisseUrl: null, recepissePublicId: null },
+  };
+
+  return prisma.documentLivreur.update({
+    where: { livreurId },
+    data:  nullMap[type],
+  });
 };

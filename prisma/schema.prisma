@@ -54,28 +54,48 @@ model Commande {
   livraisons Livraison[] @relation("CommandeLivraison")
 }
 
+
 model Livreur {
   id               Int       @id @default(autoincrement())
   userId           Int       @unique
   disponible       Boolean   @default(false)
-
-  cniRecto String?
-  cniVerso String?
-
-  // 🔥 INFOS IDENTITÉ
-  dateNaissance DateTime?
-  estVerifie Boolean @default(false)
-
-  commissionDue    Float     @default(0)
+  profilValide     Boolean   @default(false)
   estBloque        Boolean   @default(false)
+  commissionDue    Float     @default(0)
   derniereActivite DateTime?
-  user             User      @relation(fields: [userId], references: [id])
+  latActuelle      Float?
+  lngActuelle      Float?
+  estVerifie        Boolean   @default(false)
 
-  livraisons  Livraison[] // ✅ seul lien vers commande
+  user        User               @relation(fields: [userId], references: [id])
+  livraisons  Livraison[]
   commissions PaiementCommission[]
   blocages    Blocage[]
-  latActuelle Float?
-  lngActuelle Float?
+  documents   DocumentLivreur?   // ✅ ? car @unique sur livreurId = relation 1-to-1
+}
+
+model DocumentLivreur {
+  id               Int     @id @default(autoincrement())
+  livreurId        Int     @unique
+
+  // Obligatoire
+  cniRectoUrl      String
+  cniRectoPublicId String
+  cniVersoUrl      String
+  cniVersoPublicId String
+
+  // Optionnels
+  permisUrl          String?
+  permisPublicId     String?
+  assuranceUrl       String?
+  assurancePublicId  String?
+  recepisseUrl       String?
+  recepissePublicId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  livreur Livreur @relation(fields: [livreurId], references: [id])
 }
 
 model Livraison {

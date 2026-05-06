@@ -16,6 +16,10 @@ const toggleDisponibiliteService = async (userId) => {
     const livreur = await prisma_config_1.prisma.livreur.findUnique({ where: { userId } });
     if (!livreur)
         throw new Error("Livreur introuvable");
+    // ✅ Bloquer si profil non validé
+    if (!livreur.profilValide) {
+        throw new Error("Votre profil n'est pas encore validé par l'admin");
+    }
     return prisma_config_1.prisma.livreur.update({
         where: { id: livreur.id },
         data: {

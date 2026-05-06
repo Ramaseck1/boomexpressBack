@@ -3,9 +3,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
+exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const axios_1 = __importDefault(require("axios"));
+const cloudinary_1 = __importDefault(require("../config/cloudinary"));
+const stream_1 = require("stream");
+const uploadToCloudinary = (file, folder, publicId) => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary_1.default.uploader.upload_stream({
+            folder,
+            public_id: publicId,
+            overwrite: true,
+            resource_type: "auto",
+        }, (error, result) => {
+            if (error || !result)
+                return reject(error);
+            resolve({ url: result.secure_url, publicId: result.public_id });
+        });
+        stream_1.Readable.from(file.buffer).pipe(uploadStream);
+    });
+};
 // ===== Tarifs =====
 const TARIF_KM = 100;
 const TARIF_BASE = 300;
@@ -366,3 +383,98 @@ const bloquerLivreurService = async ({ livreurId, raison }) => {
     return blocage;
 };
 exports.bloquerLivreurService = bloquerLivreurService;
+//document
+const uploadDocumentsLivreurService = async (livreurId, files) => {
+    const livreur = await prisma_config_1.prisma.livreur.findUnique({ where: { id: livreurId } });
+    if (!livreur)
+        throw new Error("Livreur introuvable");
+    const get = (field) => files[field]?.[0];
+    const folder = `boom-express/livreurs/${livreurId}`;
+    const existing = await prisma_config_1.prisma.documentLivreur.findUnique({ where: { livreurId } });
+    if (!existing && (!get("cni_recto") || !get("cni_verso")))
+        throw new Error("CNI recto et verso sont obligatoires");
+    const data = { updatedAt: new Date() };
+    // Upload chaque fichier présent vers Cloudinary
+    const fields = [
+        { field: "cni_recto", urlKey: "cniRectoUrl", pidKey: "cniRectoPublicId" },
+        { field: "cni_verso", urlKey: "cniVersoUrl", pidKey: "cniVersoPublicId" },
+        { field: "permis", urlKey: "permisUrl", pidKey: "permisPublicId" },
+        { field: "assurance", urlKey: "assuranceUrl", pidKey: "assurancePublicId" },
+        { field: "recepisse_moto", urlKey: "recepisseUrl", pidKey: "recepissePublicId" },
+    ];
+    for (const { field, urlKey, pidKey } of fields) {
+        const file = get(field);
+        if (file) {
+            const result = await uploadToCloudinary(file, folder, field);
+            data[urlKey] = result.url;
+            data[pidKey] = result.publicId;
+        }
+    }
+    return prisma_config_1.prisma.documentLivreur.upsert({
+        where: { livreurId },
+        create: {
+            livreurId,
+            cniRectoUrl: data.cniRectoUrl,
+            cniRectoPublicId: data.cniRectoPublicId,
+            cniVersoUrl: data.cniVersoUrl,
+            cniVersoPublicId: data.cniVersoPublicId,
+            permisUrl: data.permisUrl ?? null,
+            permisPublicId: data.permisPublicId ?? null,
+            assuranceUrl: data.assuranceUrl ?? null,
+            assurancePublicId: data.assurancePublicId ?? null,
+            recepisseUrl: data.recepisseUrl ?? null,
+            recepissePublicId: data.recepissePublicId ?? null,
+        },
+        update: data,
+    });
+};
+exports.uploadDocumentsLivreurService = uploadDocumentsLivreurService;
+// ===== VALIDER LE PROFIL LIVREUR =====
+const validerProfilLivreurService = async (livreurId) => {
+    const docs = await prisma_config_1.prisma.documentLivreur.findUnique({ where: { livreurId } });
+    if (!docs || !docs.cniRectoUrl || !docs.cniVersoUrl)
+        throw new Error("CNI recto et verso obligatoires avant validation");
+    return prisma_config_1.prisma.livreur.update({
+        where: { id: livreurId },
+        data: { profilValide: true, estVerifie: true },
+        include: { user: true, documents: true },
+    });
+};
+exports.validerProfilLivreurService = validerProfilLivreurService;
+// ===== RÉCUPÉRER LES DOCUMENTS D'UN LIVREUR =====
+const getDocumentsLivreurService = async (livreurId) => {
+    return prisma_config_1.prisma.documentLivreur.findMany({
+        where: { livreurId },
+        orderBy: { createdAt: "desc" },
+    });
+};
+exports.getDocumentsLivreurService = getDocumentsLivreurService;
+// ===== SUPPRIMER UN DOCUMENT =====
+const supprimerDocumentService = async (livreurId, type) => {
+    const doc = await prisma_config_1.prisma.documentLivreur.findUnique({ where: { livreurId } });
+    if (!doc)
+        throw new Error("Document introuvable");
+    const pidMap = {
+        cni_recto: doc.cniRectoPublicId,
+        cni_verso: doc.cniVersoPublicId,
+        permis: doc.permisPublicId,
+        assurance: doc.assurancePublicId,
+        recepisse_moto: doc.recepissePublicId,
+    };
+    const publicId = pidMap[type];
+    if (publicId)
+        await cloudinary_1.default.uploader.destroy(publicId);
+    // Mettre le champ à null dans la DB
+    const nullMap = {
+        cni_recto: { cniRectoUrl: null, cniRectoPublicId: null },
+        cni_verso: { cniVersoUrl: null, cniVersoPublicId: null },
+        permis: { permisUrl: null, permisPublicId: null },
+        assurance: { assuranceUrl: null, assurancePublicId: null },
+        recepisse_moto: { recepisseUrl: null, recepissePublicId: null },
+    };
+    return prisma_config_1.prisma.documentLivreur.update({
+        where: { livreurId },
+        data: nullMap[type],
+    });
+};
+exports.supprimerDocumentService = supprimerDocumentService;

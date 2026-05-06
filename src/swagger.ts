@@ -5,7 +5,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
 
   info: {
     title: "MOTO EXPRESS API",
-    version: "1.6.0",
+    version: "1.7.0",
     description:
       "API livraison moto - Dakar et Saint-Louis (gestion commandes, clients, livreurs, paiements, blocages, navigation Mapbox)",
   },
@@ -16,6 +16,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
     { name: "Auth" },
     { name: "Admin" },
     { name: "Livreur" },
+    { name: "Documents", description: "📄 Gestion des documents livreurs (CNI, permis, assurance)" },
     { name: "Navigation", description: "🗺️ Navigation Mapbox GPS temps réel" },
     { name: "Clients" },
     { name: "Commandes" },
@@ -148,8 +149,6 @@ export const swaggerDocument: OpenAPIV3.Document = {
         tags: ["Admin"],
         security: [{ bearerAuth: [] }],
         summary: "Créer ou récupérer un client (par téléphone)",
-        description:
-          "Si un client avec ce numéro de téléphone existe déjà, le retourne. Sinon, le crée.",
         requestBody: {
           required: true,
           content: {
@@ -174,13 +173,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
         security: [{ bearerAuth: [] }],
         summary: "Mettre à jour un client",
         parameters: [
-          {
-            name: "clientId",
-            in: "path",
-            required: true,
-            schema: { type: "integer", example: 1 },
-            description: "ID du client à mettre à jour",
-          },
+          { name: "clientId", in: "path", required: true, schema: { type: "integer", example: 1 } },
         ],
         requestBody: {
           required: true,
@@ -189,12 +182,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
           },
         },
         responses: {
-          "200": {
-            description: "Client mis à jour",
-            content: {
-              "application/json": { schema: { $ref: "#/components/schemas/Client" } },
-            },
-          },
+          "200": { description: "Client mis à jour", content: { "application/json": { schema: { $ref: "#/components/schemas/Client" } } } },
           "400": { description: "Erreur de mise à jour" },
           "404": { description: "Client introuvable" },
         },
@@ -204,17 +192,10 @@ export const swaggerDocument: OpenAPIV3.Document = {
         security: [{ bearerAuth: [] }],
         summary: "Supprimer un client",
         parameters: [
-          {
-            name: "clientId",
-            in: "path",
-            required: true,
-            schema: { type: "integer", example: 1 },
-            description: "ID du client à supprimer",
-          },
+          { name: "clientId", in: "path", required: true, schema: { type: "integer", example: 1 } },
         ],
         responses: {
           "200": { description: "Client supprimé avec succès" },
-          "400": { description: "Erreur lors de la suppression" },
           "404": { description: "Client introuvable" },
         },
       },
@@ -226,13 +207,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
         security: [{ bearerAuth: [] }],
         summary: "Historique des commandes d'un client",
         parameters: [
-          {
-            name: "clientId",
-            in: "path",
-            required: true,
-            schema: { type: "integer", example: 1 },
-            description: "ID du client",
-          },
+          { name: "clientId", in: "path", required: true, schema: { type: "integer", example: 1 } },
         ],
         responses: {
           "200": {
@@ -243,34 +218,20 @@ export const swaggerDocument: OpenAPIV3.Document = {
               },
             },
           },
-          "400": { description: "Erreur" },
         },
       },
     },
 
-    // ═══════════════════════════════════════════
-    // ADMIN — CLIENT + COMMANDE (endpoint combiné)
-    // ═══════════════════════════════════════════
     "/admin/clients-commandes": {
       post: {
         tags: ["Admin"],
         security: [{ bearerAuth: [] }],
         summary: "Créer client + commande en une seule requête",
-        description:
-          "Crée un **nouveau client** sans vérifier si le numéro de téléphone existe déjà, puis crée automatiquement une commande associée. Le montant et la commission (10%) sont calculés automatiquement selon la distance entre l'adresse du client et l'adresse de livraison.",
         requestBody: {
           required: true,
           content: {
             "application/json": {
               schema: { $ref: "#/components/schemas/ClientEtCommandeCreate" },
-              example: {
-                nom: "Diallo",
-                prenom: "Fatou",
-                telephone: "771234567",
-                adresse: "Guet Ndar, Saint-Louis",
-                adresseLivraison: "Sor, Saint-Louis",
-                telephoneDestinataire: "761234567",
-              },
             },
           },
         },
@@ -278,14 +239,10 @@ export const swaggerDocument: OpenAPIV3.Document = {
           "201": {
             description: "Client et commande créés avec succès",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ClientEtCommandeResponse" },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/ClientEtCommandeResponse" } },
             },
           },
-          "400": {
-            description: "Champs manquants ou erreur de géocodage / adresse hors zone",
-          },
+          "400": { description: "Champs manquants ou erreur de géocodage" },
         },
       },
     },
@@ -299,31 +256,9 @@ export const swaggerDocument: OpenAPIV3.Document = {
         security: [{ bearerAuth: [] }],
         summary: "Liste des commandes (filtres optionnels)",
         parameters: [
-          {
-            name: "statut",
-            in: "query",
-            required: false,
-            schema: {
-              type: "string",
-              enum: ["en_attente", "en_cours", "livree"],
-              example: "en_attente",
-            },
-            description: "Filtrer par statut",
-          },
-          {
-            name: "dateDebut",
-            in: "query",
-            required: false,
-            schema: { type: "string", format: "date", example: "2025-01-01" },
-            description: "Filtrer à partir de cette date",
-          },
-          {
-            name: "dateFin",
-            in: "query",
-            required: false,
-            schema: { type: "string", format: "date", example: "2025-12-31" },
-            description: "Filtrer jusqu'à cette date",
-          },
+          { name: "statut", in: "query", schema: { type: "string", enum: ["en_attente", "en_cours", "livree"] } },
+          { name: "dateDebut", in: "query", schema: { type: "string", format: "date" } },
+          { name: "dateFin", in: "query", schema: { type: "string", format: "date" } },
         ],
         responses: {
           "200": {
@@ -340,8 +275,6 @@ export const swaggerDocument: OpenAPIV3.Document = {
         tags: ["Admin"],
         security: [{ bearerAuth: [] }],
         summary: "Créer une commande pour un client existant",
-        description:
-          "Montant et commission (10%) calculés automatiquement selon la distance. Si `adresseLivraison` n'est pas fournie, l'adresse de livraison enregistrée du client est utilisée.",
         requestBody: {
           required: true,
           content: {
@@ -349,22 +282,8 @@ export const swaggerDocument: OpenAPIV3.Document = {
           },
         },
         responses: {
-          "200": {
-            description: "Commande créée",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    message: { type: "string", example: "Commande créée avec succès" },
-                    commande: { $ref: "#/components/schemas/Commande" },
-                  },
-                },
-              },
-            },
-          },
+          "200": { description: "Commande créée" },
           "400": { description: "clientId manquant ou adresse invalide" },
-          "404": { description: "Client introuvable" },
         },
       },
     },
@@ -375,30 +294,16 @@ export const swaggerDocument: OpenAPIV3.Document = {
         security: [{ bearerAuth: [] }],
         summary: "Mettre à jour une commande",
         parameters: [
-          {
-            name: "commandeId",
-            in: "path",
-            required: true,
-            schema: { type: "integer", example: 1 },
-            description: "ID de la commande à mettre à jour",
-          },
+          { name: "commandeId", in: "path", required: true, schema: { type: "integer", example: 1 } },
         ],
         requestBody: {
           required: true,
           content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/CommandeUpdate" },
-            },
+            "application/json": { schema: { $ref: "#/components/schemas/CommandeUpdate" } },
           },
         },
         responses: {
-          "200": {
-            description: "Commande mise à jour",
-            content: {
-              "application/json": { schema: { $ref: "#/components/schemas/Commande" } },
-            },
-          },
-          "400": { description: "Erreur de mise à jour" },
+          "200": { description: "Commande mise à jour" },
           "404": { description: "Commande introuvable" },
         },
       },
@@ -406,21 +311,12 @@ export const swaggerDocument: OpenAPIV3.Document = {
         tags: ["Admin"],
         security: [{ bearerAuth: [] }],
         summary: "Supprimer une commande",
-        description:
-          "⚠️ Les livraisons associées doivent être supprimées au préalable si `onDelete: Cascade` n'est pas configuré dans le schéma Prisma.",
         parameters: [
-          {
-            name: "commandeId",
-            in: "path",
-            required: true,
-            schema: { type: "integer", example: 1 },
-            description: "ID de la commande à supprimer",
-          },
+          { name: "commandeId", in: "path", required: true, schema: { type: "integer", example: 1 } },
         ],
         responses: {
           "200": { description: "Commande supprimée avec succès" },
-          "400": { description: "Erreur lors de la suppression (ex: livraisons liées)" },
-          "404": { description: "Commande introuvable" },
+          "400": { description: "Erreur lors de la suppression" },
         },
       },
     },
@@ -439,29 +335,15 @@ export const swaggerDocument: OpenAPIV3.Document = {
                 required: ["commandeId", "livreurId"],
                 properties: {
                   commandeId: { type: "integer", example: 1 },
-                  livreurId: { type: "integer", example: 2 },
+                  livreurId:  { type: "integer", example: 2 },
                 },
               },
             },
           },
         },
         responses: {
-          "200": {
-            description: "Commande assignée avec succès",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    message: { type: "string", example: "Commande assignée avec succès" },
-                    livraison: { $ref: "#/components/schemas/Livraison" },
-                  },
-                },
-              },
-            },
-          },
+          "200": { description: "Commande assignée avec succès" },
           "400": { description: "commandeId ou livreurId manquant" },
-          "404": { description: "Commande introuvable" },
         },
       },
     },
@@ -476,7 +358,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
         summary: "Liste de tous les livreurs",
         responses: {
           "200": {
-            description: "Liste des livreurs avec leurs infos utilisateur",
+            description: "Liste des livreurs",
             content: {
               "application/json": {
                 schema: { type: "array", items: { $ref: "#/components/schemas/LivreurWithUser" } },
@@ -493,23 +375,15 @@ export const swaggerDocument: OpenAPIV3.Document = {
         security: [{ bearerAuth: [] }],
         summary: "Profil détaillé d'un livreur",
         parameters: [
-          {
-            name: "livreurId",
-            in: "path",
-            required: true,
-            schema: { type: "integer", example: 2 },
-          },
+          { name: "livreurId", in: "path", required: true, schema: { type: "integer", example: 2 } },
         ],
         responses: {
           "200": {
             description: "Profil livreur",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/LivreurWithUser" },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/LivreurWithUser" } },
             },
           },
-          "400": { description: "Erreur" },
         },
       },
     },
@@ -520,6 +394,113 @@ export const swaggerDocument: OpenAPIV3.Document = {
         security: [{ bearerAuth: [] }],
         summary: "Activer / désactiver le compte d'un livreur",
         parameters: [
+          { name: "livreurId", in: "path", required: true, schema: { type: "integer", example: 2 } },
+        ],
+        responses: { "200": { description: "Statut du compte basculé" } },
+      },
+    },
+
+    // ═══════════════════════════════════════════
+    // ADMIN — DOCUMENTS LIVREUR ✅ NOUVEAU
+    // ═══════════════════════════════════════════
+    "/admin/livreurs/{livreurId}/documents": {
+      post: {
+        tags: ["Documents"],
+        security: [{ bearerAuth: [] }],
+        summary: "📤 Uploader les documents d'un livreur",
+        description:
+          "Upload les documents vers **Cloudinary**. La CNI recto + verso est **obligatoire** lors du premier upload. Les autres documents sont optionnels. Les fichiers acceptés sont : JPEG, PNG, WEBP, PDF (max 5 MB par fichier).",
+        parameters: [
+          {
+            name: "livreurId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 2 },
+            description: "ID du livreur",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["cni_recto", "cni_verso"],
+                properties: {
+                  cni_recto: {
+                    type: "string",
+                    format: "binary",
+                    description: "🪪 CNI recto — OBLIGATOIRE (JPEG, PNG, WEBP, PDF)",
+                  },
+                  cni_verso: {
+                    type: "string",
+                    format: "binary",
+                    description: "🪪 CNI verso — OBLIGATOIRE (JPEG, PNG, WEBP, PDF)",
+                  },
+                  permis: {
+                    type: "string",
+                    format: "binary",
+                    description: "🚗 Permis de conduire — optionnel",
+                  },
+                  assurance: {
+                    type: "string",
+                    format: "binary",
+                    description: "📋 Attestation d'assurance — optionnel",
+                  },
+                  recepisse_moto: {
+                    type: "string",
+                    format: "binary",
+                    description: "🏍️ Récépissé moto — optionnel",
+                  },
+                },
+              },
+              encoding: {
+                cni_recto:      { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
+                cni_verso:      { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
+                permis:         { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
+                assurance:      { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
+                recepisse_moto: { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Documents uploadés avec succès sur Cloudinary",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message:   { type: "string", example: "Documents uploadés avec succès" },
+                    documents: { $ref: "#/components/schemas/DocumentLivreur" },
+                  },
+                },
+              },
+            },
+          },
+          "400": {
+            description: "CNI manquant (premier upload) ou format de fichier invalide",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    error: { type: "string", example: "CNI recto et verso sont obligatoires" },
+                  },
+                },
+              },
+            },
+          },
+          "404": { description: "Livreur introuvable" },
+        },
+      },
+      get: {
+        tags: ["Documents"],
+        security: [{ bearerAuth: [] }],
+        summary: "📄 Voir les documents d'un livreur",
+        description: "Retourne les URLs Cloudinary de tous les documents du livreur.",
+        parameters: [
           {
             name: "livreurId",
             in: "path",
@@ -528,12 +509,120 @@ export const swaggerDocument: OpenAPIV3.Document = {
           },
         ],
         responses: {
-          "200": { description: "Statut du compte basculé" },
-          "400": { description: "Erreur" },
+          "200": {
+            description: "Documents du livreur",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/DocumentLivreur" },
+              },
+            },
+          },
+          "404": { description: "Livreur ou documents introuvables" },
+        },
+      },
+      delete: {
+        tags: ["Documents"],
+        security: [{ bearerAuth: [] }],
+        summary: "🗑️ Supprimer un document spécifique",
+        description: "Supprime le fichier de Cloudinary et met le champ à `null` en base.",
+        parameters: [
+          {
+            name: "livreurId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 2 },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["type"],
+                properties: {
+                  type: {
+                    type: "string",
+                    enum: ["cni_recto", "cni_verso", "permis", "assurance", "recepisse_moto"],
+                    example: "permis",
+                    description: "Type du document à supprimer",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Document supprimé",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message:  { type: "string", example: "Document supprimé" },
+                    document: { $ref: "#/components/schemas/DocumentLivreur" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "type manquant ou document introuvable" },
         },
       },
     },
 
+    "/admin/livreurs/{livreurId}/valider": {
+      post: {
+        tags: ["Documents"],
+        security: [{ bearerAuth: [] }],
+        summary: "✅ Valider le profil d'un livreur",
+        description:
+          "Passe `profilValide` à `true` et `estVerifie` à `true`. **Nécessite que le CNI recto et verso soient uploadés.** Une fois validé, le livreur peut activer/désactiver sa disponibilité.",
+        parameters: [
+          {
+            name: "livreurId",
+            in: "path",
+            required: true,
+            schema: { type: "integer", example: 2 },
+            description: "ID du livreur à valider",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Profil validé — le livreur peut désormais toggle sa disponibilité",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    message: { type: "string", example: "Profil validé avec succès" },
+                    livreur: { $ref: "#/components/schemas/LivreurWithUser" },
+                  },
+                },
+              },
+            },
+          },
+          "400": {
+            description: "CNI manquant — impossible de valider",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    error: { type: "string", example: "CNI recto et verso obligatoires avant validation" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    // ═══════════════════════════════════════════
+    // ADMIN — BLOCAGES & PAIEMENTS
+    // ═══════════════════════════════════════════
     "/admin/livreurs/bloquer": {
       post: {
         tags: ["Blocages"],
@@ -548,7 +637,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
                 required: ["livreurId", "raison"],
                 properties: {
                   livreurId: { type: "integer", example: 2 },
-                  raison: { type: "string", example: "Comportement inapproprié signalé" },
+                  raison:    { type: "string", example: "Comportement inapproprié signalé" },
                 },
               },
             },
@@ -561,9 +650,6 @@ export const swaggerDocument: OpenAPIV3.Document = {
       },
     },
 
-    // ═══════════════════════════════════════════
-    // ADMIN — PAIEMENTS
-    // ═══════════════════════════════════════════
     "/admin/paiements/payer": {
       post: {
         tags: ["Paiements"],
@@ -578,7 +664,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
                 required: ["livreurId", "date"],
                 properties: {
                   livreurId: { type: "integer", example: 2 },
-                  date: { type: "string", format: "date", example: "2025-04-15" },
+                  date:      { type: "string", format: "date", example: "2025-04-15" },
                 },
               },
             },
@@ -593,19 +679,19 @@ export const swaggerDocument: OpenAPIV3.Document = {
                   type: "object",
                   properties: {
                     message: { type: "string", example: "Commissions du 2025-04-15 marquées comme payées" },
-                    data: { $ref: "#/components/schemas/PaiementJourResponse" },
+                    data:    { $ref: "#/components/schemas/PaiementJourResponse" },
                   },
                 },
               },
             },
           },
-          "400": { description: "livreurId ou date manquant / format date invalide / aucune commission en attente" },
+          "400": { description: "livreurId ou date manquant / aucune commission en attente" },
         },
       },
     },
 
     // ═══════════════════════════════════════════
-    // LIVREUR — PROFIL & DISPONIBILITÉ
+    // LIVREUR
     // ═══════════════════════════════════════════
     "/livreur/profil": {
       get: {
@@ -616,9 +702,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
           "200": {
             description: "Profil livreur",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/LivreurWithUser" },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/LivreurWithUser" } },
             },
           },
         },
@@ -630,12 +714,24 @@ export const swaggerDocument: OpenAPIV3.Document = {
         tags: ["Livreur"],
         security: [{ bearerAuth: [] }],
         summary: "Activer / désactiver ma disponibilité",
+        description: "⚠️ Bloqué si `profilValide = false` — l'admin doit d'abord valider le profil.",
         responses: {
           "200": {
             description: "Disponibilité modifiée",
             content: {
+              "application/json": { schema: { $ref: "#/components/schemas/LivreurWithUser" } },
+            },
+          },
+          "400": {
+            description: "Profil non validé par l'admin",
+            content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/LivreurWithUser" },
+                schema: {
+                  type: "object",
+                  properties: {
+                    error: { type: "string", example: "Votre profil n'est pas encore validé par l'admin" },
+                  },
+                },
               },
             },
           },
@@ -643,17 +739,14 @@ export const swaggerDocument: OpenAPIV3.Document = {
       },
     },
 
-    // ═══════════════════════════════════════════
-    // LIVREUR — MISSIONS
-    // ═══════════════════════════════════════════
     "/livreur/missions": {
       get: {
         tags: ["Livreur"],
         security: [{ bearerAuth: [] }],
-        summary: "Voir les missions disponibles (statut en_attente)",
+        summary: "Voir les missions disponibles",
         responses: {
           "200": {
-            description: "Liste des commandes disponibles",
+            description: "Liste des missions",
             content: {
               "application/json": {
                 schema: { type: "array", items: { $ref: "#/components/schemas/Commande" } },
@@ -669,33 +762,17 @@ export const swaggerDocument: OpenAPIV3.Document = {
         tags: ["Livreur"],
         security: [{ bearerAuth: [] }],
         summary: "Accepter une mission",
-        description:
-          "Accepte la commande et **démarre automatiquement la navigation Mapbox** si `lat`/`lng` sont fournis. La réponse inclut alors la route GeoJSON, les étapes turn-by-turn et l'ETA.",
         requestBody: {
           required: true,
           content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/AccepterMissionBody" },
-              examples: {
-                "Avec navigation": {
-                  summary: "✅ Démarre la nav automatiquement",
-                  value: { commandeId: 1, lat: 14.6928, lng: -17.4467 },
-                },
-                "Sans navigation": {
-                  summary: "⚠️ Accepte sans démarrer la nav",
-                  value: { commandeId: 1 },
-                },
-              },
-            },
+            "application/json": { schema: { $ref: "#/components/schemas/AccepterMissionBody" } },
           },
         },
         responses: {
           "200": {
             description: "Mission acceptée",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/AccepterMissionResponse" },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/AccepterMissionResponse" } },
             },
           },
           "400": { description: "Livreur bloqué ou introuvable" },
@@ -703,9 +780,6 @@ export const swaggerDocument: OpenAPIV3.Document = {
       },
     },
 
-    // ═══════════════════════════════════════════
-    // LIVREUR — LIVRAISON
-    // ═══════════════════════════════════════════
     "/livreur/livraison/confirmer": {
       post: {
         tags: ["Livreur"],
@@ -719,11 +793,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
                 type: "object",
                 required: ["livraisonId"],
                 properties: {
-                  livraisonId: {
-                    type: "integer",
-                    example: 5,
-                    description: "ID retourné lors de l'acceptation de mission",
-                  },
+                  livraisonId: { type: "integer", example: 5 },
                 },
               },
             },
@@ -733,18 +803,13 @@ export const swaggerDocument: OpenAPIV3.Document = {
           "200": {
             description: "Livraison confirmée",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/Livraison" },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/Livraison" } },
             },
           },
         },
       },
     },
 
-    // ═══════════════════════════════════════════
-    // LIVREUR — HISTORIQUE & REVENUS
-    // ═══════════════════════════════════════════
     "/livreur/historique": {
       get: {
         tags: ["Livreur"],
@@ -772,9 +837,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
           "200": {
             description: "Revenus du livreur",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/RevenusResponse" },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/RevenusResponse" } },
             },
           },
         },
@@ -825,8 +888,6 @@ export const swaggerDocument: OpenAPIV3.Document = {
         tags: ["Navigation"],
         security: [{ bearerAuth: [] }],
         summary: "🚀 Démarrer la navigation manuellement",
-        description:
-          "Géocode l'adresse de la commande, calcule la route avec trafic temps réel et sauvegarde la destination. Appeler après `accepter` si la position n'était pas fournie.",
         requestBody: {
           required: true,
           content: {
@@ -840,9 +901,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
           "200": {
             description: "Route calculée avec succès",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/NavigationResponse" },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/NavigationResponse" } },
             },
           },
           "400": { description: "Adresse de livraison manquante" },
@@ -856,41 +915,18 @@ export const swaggerDocument: OpenAPIV3.Document = {
         tags: ["Navigation"],
         security: [{ bearerAuth: [] }],
         summary: "🧭 Prochaine instruction turn-by-turn",
-        description:
-          "Retourne la prochaine instruction de navigation et l'instruction vocale formatée. À appeler en continu (toutes les 5-10 secondes) depuis l'app mobile.",
         parameters: [
-          {
-            name: "livraisonId",
-            in: "path",
-            required: true,
-            schema: { type: "integer", example: 5 },
-            description: "ID de la livraison en cours",
-          },
-          {
-            name: "lat",
-            in: "query",
-            required: true,
-            schema: { type: "number", example: 14.6928 },
-            description: "Latitude GPS actuelle du livreur",
-          },
-          {
-            name: "lng",
-            in: "query",
-            required: true,
-            schema: { type: "number", example: -17.4467 },
-            description: "Longitude GPS actuelle du livreur",
-          },
+          { name: "livraisonId", in: "path", required: true, schema: { type: "integer", example: 5 } },
+          { name: "lat", in: "query", required: true, schema: { type: "number", example: 14.6928 } },
+          { name: "lng", in: "query", required: true, schema: { type: "number", example: -17.4467 } },
         ],
         responses: {
           "200": {
             description: "Instruction de navigation",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/InstructionResponse" },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/InstructionResponse" } },
             },
           },
-          "400": { description: "Navigation pas encore démarrée pour cette livraison" },
         },
       },
     },
@@ -900,40 +936,18 @@ export const swaggerDocument: OpenAPIV3.Document = {
         tags: ["Navigation"],
         security: [{ bearerAuth: [] }],
         summary: "🚦 ETA mis à jour avec le trafic temps réel",
-        description:
-          "Recalcule l'heure d'arrivée estimée en tenant compte du trafic Mapbox en temps réel. Utiliser pour afficher l'ETA côté client.",
         parameters: [
-          {
-            name: "livraisonId",
-            in: "path",
-            required: true,
-            schema: { type: "integer", example: 5 },
-          },
-          {
-            name: "lat",
-            in: "query",
-            required: true,
-            schema: { type: "number", example: 14.6935 },
-            description: "Latitude GPS actuelle",
-          },
-          {
-            name: "lng",
-            in: "query",
-            required: true,
-            schema: { type: "number", example: -17.4450 },
-            description: "Longitude GPS actuelle",
-          },
+          { name: "livraisonId", in: "path", required: true, schema: { type: "integer", example: 5 } },
+          { name: "lat", in: "query", required: true, schema: { type: "number", example: 14.6935 } },
+          { name: "lng", in: "query", required: true, schema: { type: "number", example: -17.4450 } },
         ],
         responses: {
           "200": {
             description: "ETA calculé",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/ETAResponse" },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/ETAResponse" } },
             },
           },
-          "400": { description: "Destination non définie — démarrez d'abord la navigation" },
         },
       },
     },
@@ -943,15 +957,8 @@ export const swaggerDocument: OpenAPIV3.Document = {
         tags: ["Navigation"],
         security: [{ bearerAuth: [] }],
         summary: "📍 Convertir une adresse en coordonnées GPS",
-        description: "Utilise l'API Geocoding Mapbox pour transformer une adresse texte en lat/lng.",
         parameters: [
-          {
-            name: "adresse",
-            in: "query",
-            required: true,
-            schema: { type: "string", example: "12 Rue Moussé Diop, Dakar" },
-            description: "Adresse complète à géocoder",
-          },
+          { name: "adresse", in: "query", required: true, schema: { type: "string", example: "12 Rue Moussé Diop, Dakar" } },
         ],
         responses: {
           "200": {
@@ -968,7 +975,6 @@ export const swaggerDocument: OpenAPIV3.Document = {
               },
             },
           },
-          "400": { description: "Adresse introuvable" },
         },
       },
     },
@@ -1004,7 +1010,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
           password:   { type: "string", example: "Livreur1234!" },
           role:       { type: "string", enum: ["LIVREUR"] },
           statut:     { type: "string", enum: ["actif", "inactif"] },
-          disponible: { type: "boolean", example: true },
+          disponible: { type: "boolean", example: false },
         },
       },
 
@@ -1038,7 +1044,6 @@ export const swaggerDocument: OpenAPIV3.Document = {
 
       ClientUpdate: {
         type: "object",
-        description: "Tous les champs sont optionnels pour la mise à jour",
         properties: {
           nom:                   { type: "string", example: "Fall" },
           prenom:                { type: "string", example: "Fatou" },
@@ -1049,7 +1054,6 @@ export const swaggerDocument: OpenAPIV3.Document = {
         },
       },
 
-      // ── Client + Commande combiné ────────────
       ClientEtCommandeCreate: {
         type: "object",
         required: ["nom", "prenom", "telephone", "adresse", "adresseLivraison", "telephoneDestinataire"],
@@ -1081,12 +1085,8 @@ export const swaggerDocument: OpenAPIV3.Document = {
           montant:        { type: "number", example: 2500 },
           commission:     { type: "number", example: 250 },
           commissionPaye: { type: "boolean", example: false },
-          statut: {
-            type: "string",
-            enum: ["en_attente", "en_cours", "livree"],
-            example: "en_attente",
-          },
-          createdAt: { type: "string", format: "date-time" },
+          statut:         { type: "string", enum: ["en_attente", "en_cours", "livree"], example: "en_attente" },
+          createdAt:      { type: "string", format: "date-time" },
         },
       },
 
@@ -1094,24 +1094,15 @@ export const swaggerDocument: OpenAPIV3.Document = {
         type: "object",
         required: ["clientId"],
         properties: {
-          clientId: { type: "integer", example: 3 },
-          adresseLivraison: {
-            type: "string",
-            example: "Sor, Saint-Louis",
-            description: "Optionnel — utilise l'adresse de livraison du client si absent",
-          },
+          clientId:         { type: "integer", example: 3 },
+          adresseLivraison: { type: "string", example: "Sor, Saint-Louis" },
         },
       },
 
       CommandeUpdate: {
         type: "object",
-        description: "Tous les champs sont optionnels pour la mise à jour",
         properties: {
-          statut: {
-            type: "string",
-            enum: ["en_attente", "en_cours", "livree"],
-            example: "en_cours",
-          },
+          statut:         { type: "string", enum: ["en_attente", "en_cours", "livree"] },
           commissionPaye: { type: "boolean", example: true },
         },
       },
@@ -1123,10 +1114,10 @@ export const swaggerDocument: OpenAPIV3.Document = {
           id:             { type: "integer", example: 5 },
           commandeId:     { type: "integer", example: 1 },
           livreurId:      { type: "integer", example: 2 },
-          statut:         { type: "string", enum: ["en_cours", "livree"], example: "livree" },
+          statut:         { type: "string", enum: ["en_cours", "livree"] },
           dateLivraison:  { type: "string", format: "date-time", nullable: true },
-          destinationLat: { type: "number", example: 14.6789, nullable: true },
-          destinationLng: { type: "number", example: -17.4412, nullable: true },
+          destinationLat: { type: "number", nullable: true },
+          destinationLng: { type: "number", nullable: true },
         },
       },
 
@@ -1136,11 +1127,34 @@ export const swaggerDocument: OpenAPIV3.Document = {
         properties: {
           id:            { type: "integer" },
           disponible:    { type: "boolean" },
+          profilValide:  { type: "boolean", description: "✅ true = peut toggle sa disponibilité" },
           estBloque:     { type: "boolean" },
           commissionDue: { type: "number" },
-          latActuelle:   { type: "number", nullable: true, description: "📍 Position GPS temps réel" },
+          latActuelle:   { type: "number", nullable: true },
           lngActuelle:   { type: "number", nullable: true },
           user:          { $ref: "#/components/schemas/RegisterLivreur" },
+          documents:     { $ref: "#/components/schemas/DocumentLivreur", nullable: true },
+        },
+      },
+
+      // ── Documents Livreur ✅ NOUVEAU ─────────
+      DocumentLivreur: {
+        type: "object",
+        properties: {
+          id:        { type: "integer", example: 1 },
+          livreurId: { type: "integer", example: 2 },
+          cniRectoUrl:       { type: "string", format: "uri", example: "https://res.cloudinary.com/xxx/image/upload/cni_recto.jpg" },
+          cniRectoPublicId:  { type: "string", example: "boom-express/livreurs/2/cni_recto" },
+          cniVersoUrl:       { type: "string", format: "uri", example: "https://res.cloudinary.com/xxx/image/upload/cni_verso.jpg" },
+          cniVersoPublicId:  { type: "string", example: "boom-express/livreurs/2/cni_verso" },
+          permisUrl:         { type: "string", format: "uri", nullable: true, example: null },
+          permisPublicId:    { type: "string", nullable: true, example: null },
+          assuranceUrl:      { type: "string", format: "uri", nullable: true, example: null },
+          assurancePublicId: { type: "string", nullable: true, example: null },
+          recepisseUrl:      { type: "string", format: "uri", nullable: true, example: null },
+          recepissePublicId: { type: "string", nullable: true, example: null },
+          createdAt:         { type: "string", format: "date-time" },
+          updatedAt:         { type: "string", format: "date-time" },
         },
       },
 
@@ -1168,9 +1182,9 @@ export const swaggerDocument: OpenAPIV3.Document = {
       RevenusResponse: {
         type: "object",
         properties: {
-          total:         { type: "number", example: 25000, description: "Total brut des montants livrés" },
+          total:         { type: "number", example: 25000 },
           commissionDue: { type: "number", example: 2500 },
-          net:           { type: "number", example: 22500, description: "Total - commission" },
+          net:           { type: "number", example: 22500 },
         },
       },
 
@@ -1180,55 +1194,16 @@ export const swaggerDocument: OpenAPIV3.Document = {
         required: ["commandeId"],
         properties: {
           commandeId: { type: "integer", example: 1 },
-          lat: {
-            type: "number",
-            example: 14.6928,
-            description: "Latitude GPS actuelle (optionnel — déclenche la navigation si fourni)",
-          },
-          lng: {
-            type: "number",
-            example: -17.4467,
-            description: "Longitude GPS actuelle (optionnel)",
-          },
+          lat:        { type: "number", example: 14.6928 },
+          lng:        { type: "number", example: -17.4467 },
         },
       },
 
       AccepterMissionResponse: {
         type: "object",
         properties: {
-          livraison: { $ref: "#/components/schemas/Livraison" },
-          navigation: {
-            nullable: true,
-            description: "Null si lat/lng non fournis",
-            type: "object",
-            properties: {
-              route: {
-                type: "object",
-                description: "Géométrie GeoJSON LineString à afficher sur la carte Mapbox",
-                properties: {
-                  type: { type: "string", example: "LineString" },
-                  coordinates: {
-                    type: "array",
-                    items: { type: "array", items: { type: "number" } },
-                    example: [[-17.4467, 14.6928], [-17.4450, 14.6935]],
-                  },
-                },
-              },
-              etapes: {
-                type: "array",
-                items: { $ref: "#/components/schemas/EtapeNavigation" },
-              },
-              eta:         { type: "string", format: "date-time", example: "2025-04-06T10:32:00.000Z" },
-              destination: {
-                type: "object",
-                properties: {
-                  lat: { type: "number", example: 14.6789 },
-                  lng: { type: "number", example: -17.4412 },
-                },
-              },
-              resume: { $ref: "#/components/schemas/ResumeNavigation" },
-            },
-          },
+          livraison:  { $ref: "#/components/schemas/Livraison" },
+          navigation: { nullable: true, type: "object" },
         },
       },
 
@@ -1245,90 +1220,50 @@ export const swaggerDocument: OpenAPIV3.Document = {
       NavigationResponse: {
         type: "object",
         properties: {
-          destination: {
-            type: "object",
-            properties: {
-              lat: { type: "number", example: 14.6789 },
-              lng: { type: "number", example: -17.4412 },
-            },
-          },
-          route: {
-            type: "object",
-            properties: {
-              geometry: {
-                type: "object",
-                properties: {
-                  type:        { type: "string", example: "LineString" },
-                  coordinates: { type: "array", items: { type: "array", items: { type: "number" } } },
-                },
-              },
-              etapes:               { type: "array", items: { $ref: "#/components/schemas/EtapeNavigation" } },
-              distanceTotale:       { type: "number", example: 3400 },
-              dureeTotale:          { type: "number", example: 720 },
-              eta:                  { type: "string", format: "date-time" },
-              congestionsDetectees: { type: "boolean", example: false },
-            },
-          },
-          resume: { $ref: "#/components/schemas/ResumeNavigation" },
+          destination: { type: "object", properties: { lat: { type: "number" }, lng: { type: "number" } } },
+          route:       { type: "object" },
+          resume:      { $ref: "#/components/schemas/ResumeNavigation" },
         },
       },
 
       InstructionResponse: {
         type: "object",
         properties: {
-          instruction:             { type: "string", example: "Tournez à gauche sur Avenue Bourguiba" },
-          distanceProchainVirage:  { type: "integer", example: 180, description: "en mètres" },
-          eta:                     { type: "string", format: "date-time" },
-          instructionVocale: {
-            type: "string",
-            example: "Dans 180 mètres, tournez à gauche sur avenue bourguiba",
-            description: "🔊 Texte prêt à passer en Text-to-Speech",
-          },
+          instruction:            { type: "string", example: "Tournez à gauche sur Avenue Bourguiba" },
+          distanceProchainVirage: { type: "integer", example: 180 },
+          eta:                    { type: "string", format: "date-time" },
+          instructionVocale:      { type: "string" },
         },
       },
 
       ETAResponse: {
         type: "object",
         properties: {
-          eta:                     { type: "string", format: "date-time", example: "2025-04-06T10:38:00.000Z" },
-          distanceRestanteMetres:  { type: "integer", example: 1200 },
-          dureeRestanteSecondes:   { type: "integer", example: 420 },
-          congestionsDetectees: {
-            type: "boolean",
-            example: true,
-            description: "🚦 True si trafic chargé sur le reste du trajet",
-          },
+          eta:                    { type: "string", format: "date-time" },
+          distanceRestanteMetres: { type: "integer", example: 1200 },
+          dureeRestanteSecondes:  { type: "integer", example: 420 },
+          congestionsDetectees:   { type: "boolean", example: true },
         },
       },
 
       EtapeNavigation: {
         type: "object",
         properties: {
-          instruction: { type: "string", example: "Continuez tout droit sur la RN1" },
-          distance:    { type: "integer", example: 450, description: "en mètres" },
-          duree:       { type: "integer", example: 90, description: "en secondes" },
-          coordonnees: {
-            type: "object",
-            properties: {
-              lat: { type: "number", example: 14.693 },
-              lng: { type: "number", example: -17.445 },
-            },
-          },
+          instruction: { type: "string" },
+          distance:    { type: "integer" },
+          duree:       { type: "integer" },
+          coordonnees: { type: "object", properties: { lat: { type: "number" }, lng: { type: "number" } } },
         },
       },
 
       ResumeNavigation: {
         type: "object",
         properties: {
-          distanceKm:    { type: "string", example: "3.4" },
-          dureeMinutes:  { type: "integer", example: 12 },
-          eta:           { type: "string", format: "date-time" },
-          nombreEtapes:  { type: "integer", example: 8 },
-          alerte: {
-            type: "string",
-            nullable: true,
-            example: "⚠️ Trafic chargé sur votre itinéraire",
-          },
+          distanceKm:   { type: "string", example: "3.4" },
+          dureeMinutes: { type: "integer", example: 12 },
+          eta:          { type: "string", format: "date-time" },
+          nombreEtapes: { type: "integer", example: 8 },
+          alerte:       { type: "string", nullable: true },
         },
       },
     },
