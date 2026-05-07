@@ -70,5 +70,9 @@ router.get("/livreurs/:livreurId/documents", controller.getDocumentsLivreur);
 router.post("/livreurs/:livreurId/valider", controller.validerProfilLivreur);
 router.delete("/livreurs/:livreurId/documents", controller.supprimerDocument);
 // Paiements
-router.post("/paiements/payer", controller.marquerPaiementJour);
+/* router.post("/paiements/payer", controller.marquerPaiementJour);
+ */
+// Commissions
+router.get("/commissions/jour", controller.getCommissionsJour);
+router.post("/commissions/payer", controller.payerCommissionsJour);
 exports.default = router;

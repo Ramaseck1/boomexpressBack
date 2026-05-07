@@ -447,6 +447,83 @@ export const bloquerLivreurService = async ({ livreurId, raison }: any) => {
 };
 
 
+// ===== COMMISSIONS DU JOUR — Vue admin par livreur =====
+export const getCommissionsJourAdminService = async (date?: string) => {
+  const jour = date ? new Date(date) : new Date();
+
+  const debut = new Date(jour); debut.setHours(0, 0, 0, 0);
+  const fin   = new Date(jour); fin.setHours(23, 59, 59, 999);
+
+  // Toutes les livraisons livrées ce jour-là, groupées par livreur
+  const livraisons = await prisma.livraison.findMany({
+    where: {
+      statut:        "livree",
+      dateLivraison: { gte: debut, lte: fin },
+    },
+    include: {
+      commande: true,
+      livreur:  { include: { user: true } },
+    },
+    orderBy: { dateLivraison: "asc" },
+  });
+
+  // Grouper par livreurId
+  const grouped: Record<number, {
+    livreur:     any;
+    livraisons:  any[];
+    total:       number;
+    commission:  number;
+    statut:      "payee" | "en_attente" | "partielle";
+  }> = {};
+
+  for (const liv of livraisons) {
+    const lid = liv.livreurId;
+
+    if (!grouped[lid]) {
+      grouped[lid] = {
+        livreur:    liv.livreur,
+        livraisons: [],
+        total:      0,
+        commission: 0,
+        statut:     "en_attente",
+      };
+    }
+
+    const montant    = liv.commande?.montant    ?? 0;
+    const commission = liv.commande?.commission ?? montant * 0.10;
+
+    grouped[lid].livraisons.push({
+      livraisonId:     liv.id,
+      commandeId:      liv.commandeId,
+      montant,
+      commission:      parseFloat(commission.toFixed(2)),
+      dateLivraison:   liv.dateLivraison,
+      commissionPayee: liv.commande?.commissionPaye ?? false,
+    });
+
+    grouped[lid].total      += montant;
+    grouped[lid].commission += commission;
+  }
+
+  // Calculer le statut de paiement global par livreur
+  return Object.values(grouped).map((g) => {
+    const toutes  = g.livraisons.every((l) => l.commissionPayee);
+    const aucune  = g.livraisons.every((l) => !l.commissionPayee);
+
+    return {
+      livreurId:        g.livreur.id,
+      nom:              g.livreur.user.nom,
+      prenom:           g.livreur.user.prenom,
+      telephone:        g.livreur.user.telephone,
+      nombreLivraisons: g.livraisons.length,
+      totalBrut:        parseFloat(g.total.toFixed(2)),
+      totalCommission:  parseFloat(g.commission.toFixed(2)),
+      statut:           toutes ? "payee" : aucune ? "en_attente" : "partielle",
+      livraisons:       g.livraisons,
+    };
+  });
+};
+
 
 //document
 export const uploadDocumentsLivreurService = async (

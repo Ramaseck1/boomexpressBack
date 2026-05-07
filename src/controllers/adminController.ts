@@ -208,6 +208,33 @@ export const bloquerLivreur = async (req: Request, res: Response) => {
 };
 
 
+
+// ─── Commissions du jour ──────────────────────────────────────────────────────
+
+export const getCommissionsJour = async (req: Request, res: Response) => {
+  try {
+    // ?date=2025-07-14  (optionnel — défaut = aujourd'hui)
+    const date = req.query.date as string | undefined;
+    const data = await service.getCommissionsJourAdminService(date);
+    res.json(data);
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+export const payerCommissionsJour = async (req: Request, res: Response) => {
+  try {
+    const { livreurId, date } = req.body;
+
+    if (!livreurId || !date)
+      return res.status(400).json({ message: "livreurId et date sont requis" });
+
+    const result = await service.marquerPaiementJourService (livreurId, date);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};
 export const uploadDocumentsLivreur = async (req: Request, res: Response) => {
   try {
     const { livreurId } = req.params;

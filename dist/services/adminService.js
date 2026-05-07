@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
+exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const axios_1 = __importDefault(require("axios"));
 const cloudinary_1 = __importDefault(require("../config/cloudinary"));
@@ -383,6 +383,69 @@ const bloquerLivreurService = async ({ livreurId, raison }) => {
     return blocage;
 };
 exports.bloquerLivreurService = bloquerLivreurService;
+// ===== COMMISSIONS DU JOUR — Vue admin par livreur =====
+const getCommissionsJourAdminService = async (date) => {
+    const jour = date ? new Date(date) : new Date();
+    const debut = new Date(jour);
+    debut.setHours(0, 0, 0, 0);
+    const fin = new Date(jour);
+    fin.setHours(23, 59, 59, 999);
+    // Toutes les livraisons livrées ce jour-là, groupées par livreur
+    const livraisons = await prisma_config_1.prisma.livraison.findMany({
+        where: {
+            statut: "livree",
+            dateLivraison: { gte: debut, lte: fin },
+        },
+        include: {
+            commande: true,
+            livreur: { include: { user: true } },
+        },
+        orderBy: { dateLivraison: "asc" },
+    });
+    // Grouper par livreurId
+    const grouped = {};
+    for (const liv of livraisons) {
+        const lid = liv.livreurId;
+        if (!grouped[lid]) {
+            grouped[lid] = {
+                livreur: liv.livreur,
+                livraisons: [],
+                total: 0,
+                commission: 0,
+                statut: "en_attente",
+            };
+        }
+        const montant = liv.commande?.montant ?? 0;
+        const commission = liv.commande?.commission ?? montant * 0.10;
+        grouped[lid].livraisons.push({
+            livraisonId: liv.id,
+            commandeId: liv.commandeId,
+            montant,
+            commission: parseFloat(commission.toFixed(2)),
+            dateLivraison: liv.dateLivraison,
+            commissionPayee: liv.commande?.commissionPaye ?? false,
+        });
+        grouped[lid].total += montant;
+        grouped[lid].commission += commission;
+    }
+    // Calculer le statut de paiement global par livreur
+    return Object.values(grouped).map((g) => {
+        const toutes = g.livraisons.every((l) => l.commissionPayee);
+        const aucune = g.livraisons.every((l) => !l.commissionPayee);
+        return {
+            livreurId: g.livreur.id,
+            nom: g.livreur.user.nom,
+            prenom: g.livreur.user.prenom,
+            telephone: g.livreur.user.telephone,
+            nombreLivraisons: g.livraisons.length,
+            totalBrut: parseFloat(g.total.toFixed(2)),
+            totalCommission: parseFloat(g.commission.toFixed(2)),
+            statut: toutes ? "payee" : aucune ? "en_attente" : "partielle",
+            livraisons: g.livraisons,
+        };
+    });
+};
+exports.getCommissionsJourAdminService = getCommissionsJourAdminService;
 //document
 const uploadDocumentsLivreurService = async (livreurId, files) => {
     const livreur = await prisma_config_1.prisma.livreur.findUnique({ where: { id: livreurId } });
