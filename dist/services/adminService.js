@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
+exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const axios_1 = __importDefault(require("axios"));
 const cloudinary_1 = __importDefault(require("../config/cloudinary"));
@@ -446,6 +446,37 @@ const getCommissionsJourAdminService = async (date) => {
     });
 };
 exports.getCommissionsJourAdminService = getCommissionsJourAdminService;
+// ===== STATS GLOBALES COMMISSIONS =====
+const getStatsCommissionsGlobalesService = async () => {
+    // Toutes les commandes livrées
+    const commandes = await prisma_config_1.prisma.commande.findMany({
+        where: {
+            livraisons: {
+                some: {
+                    statut: "livree",
+                },
+            },
+        },
+        include: {
+            livraisons: true,
+        },
+    });
+    const totalCommission = commandes.reduce((sum, cmd) => sum + (cmd.commission || 0), 0);
+    const totalPayees = commandes
+        .filter(cmd => cmd.commissionPaye)
+        .reduce((sum, cmd) => sum + (cmd.commission || 0), 0);
+    const totalImpayees = commandes
+        .filter(cmd => !cmd.commissionPaye)
+        .reduce((sum, cmd) => sum + (cmd.commission || 0), 0);
+    const totalLivraisons = commandes.reduce((sum, cmd) => sum + cmd.livraisons.length, 0);
+    return {
+        totalCommission: parseFloat(totalCommission.toFixed(2)),
+        totalPayees: parseFloat(totalPayees.toFixed(2)),
+        totalImpayees: parseFloat(totalImpayees.toFixed(2)),
+        totalLivraisons,
+    };
+};
+exports.getStatsCommissionsGlobalesService = getStatsCommissionsGlobalesService;
 //document
 const uploadDocumentsLivreurService = async (livreurId, files) => {
     const livreur = await prisma_config_1.prisma.livreur.findUnique({ where: { id: livreurId } });

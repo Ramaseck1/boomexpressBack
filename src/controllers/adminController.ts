@@ -222,6 +222,18 @@ export const getCommissionsJour = async (req: Request, res: Response) => {
   }
 };
 
+
+export const getStatsCommissionsGlobales = async (req: Request, res: Response) => {
+  try {
+    const stats = await service.getStatsCommissionsGlobalesService();
+
+    res.json(stats);
+  } catch (error: any) {
+    res.status(500).json({
+      message: error.message || "Erreur stats commissions",
+    });
+  }
+};
 export const payerCommissionsJour = async (req: Request, res: Response) => {
   try {
     const { livreurId, date } = req.body;
@@ -235,6 +247,8 @@ export const payerCommissionsJour = async (req: Request, res: Response) => {
     res.status(400).json({ message: err.message });
   }
 };
+
+
 export const uploadDocumentsLivreur = async (req: Request, res: Response) => {
   try {
     const { livreurId } = req.params;

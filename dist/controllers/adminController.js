@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.payerCommissionsJour = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
+exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.payerCommissionsJour = exports.getStatsCommissionsGlobales = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
 const service = __importStar(require("../services/adminService"));
 // ===== CLIENTS =====
 const getClients = async (req, res) => {
@@ -279,6 +279,18 @@ const getCommissionsJour = async (req, res) => {
     }
 };
 exports.getCommissionsJour = getCommissionsJour;
+const getStatsCommissionsGlobales = async (req, res) => {
+    try {
+        const stats = await service.getStatsCommissionsGlobalesService();
+        res.json(stats);
+    }
+    catch (error) {
+        res.status(500).json({
+            message: error.message || "Erreur stats commissions",
+        });
+    }
+};
+exports.getStatsCommissionsGlobales = getStatsCommissionsGlobales;
 const payerCommissionsJour = async (req, res) => {
     try {
         const { livreurId, date } = req.body;

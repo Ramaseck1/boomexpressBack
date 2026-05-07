@@ -525,6 +525,48 @@ export const getCommissionsJourAdminService = async (date?: string) => {
 };
 
 
+// ===== STATS GLOBALES COMMISSIONS =====
+export const getStatsCommissionsGlobalesService = async () => {
+  // Toutes les commandes livrées
+  const commandes = await prisma.commande.findMany({
+    where: {
+      livraisons: {
+        some: {
+          statut: "livree",
+        },
+      },
+    },
+    include: {
+      livraisons: true,
+    },
+  });
+
+  const totalCommission = commandes.reduce(
+    (sum, cmd) => sum + (cmd.commission || 0),
+    0
+  );
+
+  const totalPayees = commandes
+    .filter(cmd => cmd.commissionPaye)
+    .reduce((sum, cmd) => sum + (cmd.commission || 0), 0);
+
+  const totalImpayees = commandes
+    .filter(cmd => !cmd.commissionPaye)
+    .reduce((sum, cmd) => sum + (cmd.commission || 0), 0);
+
+  const totalLivraisons = commandes.reduce(
+    (sum, cmd) => sum + cmd.livraisons.length,
+    0
+  );
+
+  return {
+    totalCommission: parseFloat(totalCommission.toFixed(2)),
+    totalPayees: parseFloat(totalPayees.toFixed(2)),
+    totalImpayees: parseFloat(totalImpayees.toFixed(2)),
+    totalLivraisons,
+  };
+};
+
 //document
 export const uploadDocumentsLivreurService = async (
   livreurId: number,
