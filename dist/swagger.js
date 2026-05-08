@@ -5,7 +5,7 @@ exports.swaggerDocument = {
     openapi: "3.0.3",
     info: {
         title: "MOTO EXPRESS API",
-        version: "1.7.0",
+        version: "1.8.0",
         description: "API livraison moto - Dakar et Saint-Louis (gestion commandes, clients, livreurs, paiements, blocages, navigation Mapbox)",
     },
     servers: [{ url: "http://localhost:3000/api" }],
@@ -116,6 +116,208 @@ exports.swaggerDocument = {
                     },
                 },
                 responses: { "201": { description: "Livreur créé" } },
+            },
+        },
+        // ═══════════════════════════════════════════
+        // AUTH — RESET MOT DE PASSE 🔑
+        // ═══════════════════════════════════════════
+        "/auth/password-reset/request": {
+            post: {
+                tags: ["Auth"],
+                summary: "🔑 Étape 1 — Demander un code de réinitialisation",
+                description: "Envoie un code à 6 chiffres par **email** à l'adresse associée au compte. L'identifiant peut être le **téléphone** ou l'**email** du livreur. Le code est valable **15 minutes**.",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["identifier"],
+                                properties: {
+                                    identifier: {
+                                        type: "string",
+                                        description: "Numéro de téléphone ou adresse email du compte",
+                                        example: "771234567",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": {
+                        description: "Code envoyé avec succès par email",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        message: {
+                                            type: "string",
+                                            example: "Code envoyé à votre adresse email",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "400": {
+                        description: "Compte introuvable ou aucun email associé",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    compteIntrouvable: {
+                                        summary: "Aucun compte trouvé",
+                                        value: { message: "Aucun compte trouvé avec cet identifiant" },
+                                    },
+                                    emailManquant: {
+                                        summary: "Pas d'email",
+                                        value: { message: "Aucun email associé à ce compte" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/auth/password-reset/verify": {
+            post: {
+                tags: ["Auth"],
+                summary: "🔑 Étape 2 — Vérifier le code reçu par email",
+                description: "Vérifie le code à 6 chiffres reçu par email. Si valide, retourne un **resetToken** JWT valable **10 minutes** à utiliser dans l'étape 3.",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["identifier", "code"],
+                                properties: {
+                                    identifier: {
+                                        type: "string",
+                                        description: "Même identifiant utilisé à l'étape 1 (téléphone ou email)",
+                                        example: "771234567",
+                                    },
+                                    code: {
+                                        type: "string",
+                                        description: "Code à 6 chiffres reçu par email",
+                                        example: "482910",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": {
+                        description: "Code vérifié — utiliser le resetToken à l'étape 3",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        resetToken: {
+                                            type: "string",
+                                            description: "JWT temporaire valable 10 minutes",
+                                            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                                        },
+                                        message: {
+                                            type: "string",
+                                            example: "Code vérifié avec succès",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "400": {
+                        description: "Code invalide, expiré ou compte introuvable",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    codeInvalide: {
+                                        summary: "Code invalide ou expiré",
+                                        value: { message: "Code invalide ou expiré" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/auth/password-reset/confirm": {
+            post: {
+                tags: ["Auth"],
+                summary: "🔑 Étape 3 — Définir le nouveau mot de passe",
+                description: "Finalise la réinitialisation du mot de passe. Nécessite le **resetToken** obtenu à l'étape 2, le nouveau mot de passe et sa confirmation.",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["resetToken", "newPassword", "confirmPassword"],
+                                properties: {
+                                    resetToken: {
+                                        type: "string",
+                                        description: "Token JWT reçu à l'étape 2",
+                                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                                    },
+                                    newPassword: {
+                                        type: "string",
+                                        description: "Nouveau mot de passe",
+                                        example: "NouveauMdp2024!",
+                                    },
+                                    confirmPassword: {
+                                        type: "string",
+                                        description: "Confirmation du nouveau mot de passe (doit être identique)",
+                                        example: "NouveauMdp2024!",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": {
+                        description: "Mot de passe modifié avec succès",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        message: {
+                                            type: "string",
+                                            example: "Mot de passe modifié avec succès",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "400": {
+                        description: "Token invalide/expiré ou mots de passe non conformes",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    motDePasseDifferent: {
+                                        summary: "Mots de passe différents",
+                                        value: { message: "Les mots de passe ne correspondent pas" },
+                                    },
+                                    tokenInvalide: {
+                                        summary: "Token expiré",
+                                        value: { message: "Token invalide ou expiré" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             },
         },
         // ═══════════════════════════════════════════
@@ -383,7 +585,7 @@ exports.swaggerDocument = {
             },
         },
         // ═══════════════════════════════════════════
-        // ADMIN — DOCUMENTS LIVREUR ✅ NOUVEAU
+        // ADMIN — DOCUMENTS LIVREUR
         // ═══════════════════════════════════════════
         "/admin/livreurs/{livreurId}/documents": {
             post: {
@@ -408,39 +610,12 @@ exports.swaggerDocument = {
                                 type: "object",
                                 required: ["cni_recto", "cni_verso"],
                                 properties: {
-                                    cni_recto: {
-                                        type: "string",
-                                        format: "binary",
-                                        description: "🪪 CNI recto — OBLIGATOIRE (JPEG, PNG, WEBP, PDF)",
-                                    },
-                                    cni_verso: {
-                                        type: "string",
-                                        format: "binary",
-                                        description: "🪪 CNI verso — OBLIGATOIRE (JPEG, PNG, WEBP, PDF)",
-                                    },
-                                    permis: {
-                                        type: "string",
-                                        format: "binary",
-                                        description: "🚗 Permis de conduire — optionnel",
-                                    },
-                                    assurance: {
-                                        type: "string",
-                                        format: "binary",
-                                        description: "📋 Attestation d'assurance — optionnel",
-                                    },
-                                    recepisse_moto: {
-                                        type: "string",
-                                        format: "binary",
-                                        description: "🏍️ Récépissé moto — optionnel",
-                                    },
+                                    cni_recto: { type: "string", format: "binary", description: "🪪 CNI recto — OBLIGATOIRE" },
+                                    cni_verso: { type: "string", format: "binary", description: "🪪 CNI verso — OBLIGATOIRE" },
+                                    permis: { type: "string", format: "binary", description: "🚗 Permis de conduire — optionnel" },
+                                    assurance: { type: "string", format: "binary", description: "📋 Attestation d'assurance — optionnel" },
+                                    recepisse_moto: { type: "string", format: "binary", description: "🏍️ Récépissé moto — optionnel" },
                                 },
-                            },
-                            encoding: {
-                                cni_recto: { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
-                                cni_verso: { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
-                                permis: { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
-                                assurance: { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
-                                recepisse_moto: { contentType: "image/jpeg, image/png, image/webp, application/pdf" },
                             },
                         },
                     },
@@ -460,19 +635,7 @@ exports.swaggerDocument = {
                             },
                         },
                     },
-                    "400": {
-                        description: "CNI manquant (premier upload) ou format de fichier invalide",
-                        content: {
-                            "application/json": {
-                                schema: {
-                                    type: "object",
-                                    properties: {
-                                        error: { type: "string", example: "CNI recto et verso sont obligatoires" },
-                                    },
-                                },
-                            },
-                        },
-                    },
+                    "400": { description: "CNI manquant (premier upload) ou format de fichier invalide" },
                     "404": { description: "Livreur introuvable" },
                 },
             },
@@ -480,22 +643,14 @@ exports.swaggerDocument = {
                 tags: ["Documents"],
                 security: [{ bearerAuth: [] }],
                 summary: "📄 Voir les documents d'un livreur",
-                description: "Retourne les URLs Cloudinary de tous les documents du livreur.",
                 parameters: [
-                    {
-                        name: "livreurId",
-                        in: "path",
-                        required: true,
-                        schema: { type: "integer", example: 2 },
-                    },
+                    { name: "livreurId", in: "path", required: true, schema: { type: "integer", example: 2 } },
                 ],
                 responses: {
                     "200": {
                         description: "Documents du livreur",
                         content: {
-                            "application/json": {
-                                schema: { $ref: "#/components/schemas/DocumentLivreur" },
-                            },
+                            "application/json": { schema: { $ref: "#/components/schemas/DocumentLivreur" } },
                         },
                     },
                     "404": { description: "Livreur ou documents introuvables" },
@@ -505,14 +660,8 @@ exports.swaggerDocument = {
                 tags: ["Documents"],
                 security: [{ bearerAuth: [] }],
                 summary: "🗑️ Supprimer un document spécifique",
-                description: "Supprime le fichier de Cloudinary et met le champ à `null` en base.",
                 parameters: [
-                    {
-                        name: "livreurId",
-                        in: "path",
-                        required: true,
-                        schema: { type: "integer", example: 2 },
-                    },
+                    { name: "livreurId", in: "path", required: true, schema: { type: "integer", example: 2 } },
                 ],
                 requestBody: {
                     required: true,
@@ -526,7 +675,6 @@ exports.swaggerDocument = {
                                         type: "string",
                                         enum: ["cni_recto", "cni_verso", "permis", "assurance", "recepisse_moto"],
                                         example: "permis",
-                                        description: "Type du document à supprimer",
                                     },
                                 },
                             },
@@ -557,19 +705,12 @@ exports.swaggerDocument = {
                 tags: ["Documents"],
                 security: [{ bearerAuth: [] }],
                 summary: "✅ Valider le profil d'un livreur",
-                description: "Passe `profilValide` à `true` et `estVerifie` à `true`. **Nécessite que le CNI recto et verso soient uploadés.** Une fois validé, le livreur peut activer/désactiver sa disponibilité.",
                 parameters: [
-                    {
-                        name: "livreurId",
-                        in: "path",
-                        required: true,
-                        schema: { type: "integer", example: 2 },
-                        description: "ID du livreur à valider",
-                    },
+                    { name: "livreurId", in: "path", required: true, schema: { type: "integer", example: 2 } },
                 ],
                 responses: {
                     "200": {
-                        description: "Profil validé — le livreur peut désormais toggle sa disponibilité",
+                        description: "Profil validé",
                         content: {
                             "application/json": {
                                 schema: {
@@ -949,6 +1090,13 @@ exports.swaggerDocument = {
     components: {
         securitySchemes: { bearerAuth: { type: "http", scheme: "bearer" } },
         schemas: {
+            // ── Erreur générique ────────────────────
+            ErrorResponse: {
+                type: "object",
+                properties: {
+                    message: { type: "string", example: "Une erreur est survenue" },
+                },
+            },
             // ── Auth ────────────────────────────────
             RegisterAdmin: {
                 type: "object",
@@ -1087,7 +1235,7 @@ exports.swaggerDocument = {
                     documents: { $ref: "#/components/schemas/DocumentLivreur", nullable: true },
                 },
             },
-            // ── Documents Livreur ✅ NOUVEAU ─────────
+            // ── Documents Livreur ───────────────────
             DocumentLivreur: {
                 type: "object",
                 properties: {

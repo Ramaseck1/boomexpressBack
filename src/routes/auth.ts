@@ -2,10 +2,14 @@ import { Router } from "express";
 import {
   loginLivreur,
   loginAdmin,
-  registerAdmin,registerLivreur,
-  getUser
+  registerAdmin,
+  registerLivreur,
+  getUser,
+  requestPasswordReset,
+  verifyResetCode,
+  resetPassword,
 } from "../controllers/authController";
-import { authenticate ,onlySuperAdmin} from "../middleware/authMiddleware";
+import { authenticate, onlySuperAdmin } from "../middleware/authMiddleware";
 
 const router = Router();
 
@@ -13,7 +17,8 @@ const router = Router();
 router.post("/login/livreur", loginLivreur);
 router.post("/login/admin", loginAdmin);
 
-// 👑 REGISTER ADMIN (SUPERADMIN ONLY)
+// 📝 REGISTER
+router.post("/register/livreur", registerLivreur);
 router.post(
   "/register/admin",
   authenticate(["SUPERADMIN"]),
@@ -21,11 +26,12 @@ router.post(
   registerAdmin
 );
 
-router.get(
-  "/me",
-  authenticate(["LIVREUR", "ADMIN", "SUPERADMIN"]),
-  getUser
-);
+// 👤 PROFIL
+router.get("/me", authenticate(["LIVREUR", "ADMIN", "SUPERADMIN"]), getUser);
 
-router.post("/register/livreur", registerLivreur); // ← public
- export default router;
+// 🔑 RESET MOT DE PASSE (routes publiques, 3 étapes)
+router.post("/password-reset/request", requestPasswordReset);   // { identifier }
+router.post("/password-reset/verify", verifyResetCode);         // { identifier, code }
+router.post("/password-reset/confirm", resetPassword);          // { resetToken, newPassword, confirmPassword }
+
+export default router;

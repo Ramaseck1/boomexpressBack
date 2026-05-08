@@ -4,10 +4,12 @@ import {
   loginAdminService,
   registerAdminService,
   registerLivreurService,
-  getUserService
+  getUserService,
+  requestPasswordResetService,
+  verifyResetCodeService,
+  resetPasswordService,
 } from "../services/authService";
 
-// LOGIN LIVREUR
 export const loginLivreur = async (req: Request, res: Response) => {
   try {
     const { telephone, password } = req.body;
@@ -26,7 +28,7 @@ export const registerLivreur = async (req: Request, res: Response) => {
     res.status(400).json({ message: e.message });
   }
 };
-// LOGIN ADMIN
+
 export const loginAdmin = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -37,8 +39,6 @@ export const loginAdmin = async (req: Request, res: Response) => {
   }
 };
 
-
-// REGISTER ADMIN (SUPERADMIN ONLY)
 export const registerAdmin = async (req: Request, res: Response) => {
   try {
     const admin = await registerAdminService(req.body);
@@ -51,10 +51,40 @@ export const registerAdmin = async (req: Request, res: Response) => {
 export const getUser = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-
     const user = await getUserService(userId);
-
     res.json(user);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+// ─── RESET MOT DE PASSE ───────────────────────────────────
+
+export const requestPasswordReset = async (req: Request, res: Response) => {
+  try {
+    const { identifier } = req.body; // téléphone ou email
+    const result = await requestPasswordResetService(identifier);
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const verifyResetCode = async (req: Request, res: Response) => {
+  try {
+    const { identifier, code } = req.body;
+    const result = await verifyResetCodeService(identifier, code);
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { resetToken, newPassword, confirmPassword } = req.body;
+    const result = await resetPasswordService(resetToken, newPassword, confirmPassword);
+    res.json(result);
   } catch (e: any) {
     res.status(400).json({ message: e.message });
   }

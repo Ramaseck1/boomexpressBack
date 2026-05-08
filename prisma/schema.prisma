@@ -8,24 +8,36 @@ datasource db {
 }
 
 model User {
+  id                Int                 @id @default(autoincrement())
+  nom               String
+  prenom            String
+  telephone         String?             @unique
+  email             String?             @unique
+  password          String
+  role              Role
+  statut            String              @default("actif")
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  livreur           Livreur?
+  PasswordResetCode PasswordResetCode[]
+}
+
+model PasswordResetCode {
   id        Int      @id @default(autoincrement())
-  nom       String
-  prenom    String
-  telephone String?  @unique
-  email     String?  @unique
-  password  String
-  role      Role
-  statut    String   @default("actif")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  livreur   Livreur?
+  userId    Int
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  verified  Boolean  @default(false) // ← ajouter ce champ
+
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Client {
   id                    Int      @id @default(autoincrement())
   nom                   String
   prenom                String
-  telephone             String   
+  telephone             String
   adresse               String
   adresseLivraison      String
   telephoneDestinataire String
@@ -54,7 +66,6 @@ model Commande {
   livraisons Livraison[] @relation("CommandeLivraison")
 }
 
-
 model Livreur {
   id               Int       @id @default(autoincrement())
   userId           Int       @unique
@@ -65,18 +76,18 @@ model Livreur {
   derniereActivite DateTime?
   latActuelle      Float?
   lngActuelle      Float?
-  estVerifie        Boolean   @default(false)
+  estVerifie       Boolean   @default(false)
 
-  user        User               @relation(fields: [userId], references: [id])
+  user        User                 @relation(fields: [userId], references: [id])
   livraisons  Livraison[]
   commissions PaiementCommission[]
   blocages    Blocage[]
-  documents   DocumentLivreur?   // ✅ ? car @unique sur livreurId = relation 1-to-1
+  documents   DocumentLivreur? // ✅ ? car @unique sur livreurId = relation 1-to-1
 }
 
 model DocumentLivreur {
-  id               Int     @id @default(autoincrement())
-  livreurId        Int     @unique
+  id        Int @id @default(autoincrement())
+  livreurId Int @unique
 
   // Obligatoire
   cniRectoUrl      String
@@ -85,12 +96,12 @@ model DocumentLivreur {
   cniVersoPublicId String
 
   // Optionnels
-  permisUrl          String?
-  permisPublicId     String?
-  assuranceUrl       String?
-  assurancePublicId  String?
-  recepisseUrl       String?
-  recepissePublicId  String?
+  permisUrl         String?
+  permisPublicId    String?
+  assuranceUrl      String?
+  assurancePublicId String?
+  recepisseUrl      String?
+  recepissePublicId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -111,12 +122,12 @@ model Livraison {
 }
 
 model PaiementCommission {
-  id        Int     @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   livreurId Int
   montant   Float
   statut    String
   createdAt DateTime @default(now())
-  livreur   Livreur @relation(fields: [livreurId], references: [id])
+  livreur   Livreur  @relation(fields: [livreurId], references: [id])
 }
 
 model Blocage {
