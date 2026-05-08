@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserService = exports.registerAdminService = exports.loginAdminService = exports.resetPasswordService = exports.verifyResetCodeService = exports.requestPasswordResetService = exports.registerLivreurService = exports.loginLivreurService = void 0;
+exports.updateUserService = exports.getUserService = exports.registerAdminService = exports.loginAdminService = exports.resetPasswordService = exports.verifyResetCodeService = exports.requestPasswordResetService = exports.registerLivreurService = exports.loginLivreurService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -207,3 +207,39 @@ const generateToken = (user) => {
         },
     };
 };
+const updateUserService = async (userId, data) => {
+    const user = await prisma_config_1.prisma.user.findUnique({
+        where: { id: userId },
+        include: { livreur: true },
+    });
+    if (!user)
+        throw new Error("Utilisateur non trouvé");
+    // Vérifier unicité du téléphone si modifié
+    if (data.telephone && data.telephone !== user.telephone) {
+        const existing = await prisma_config_1.prisma.user.findUnique({
+            where: { telephone: data.telephone },
+        });
+        if (existing)
+            throw new Error("Ce numéro est déjà utilisé");
+    }
+    // Vérifier unicité de l'email si modifié
+    if (data.email && data.email !== user.email) {
+        const existing = await prisma_config_1.prisma.user.findFirst({
+            where: { email: data.email },
+        });
+        if (existing)
+            throw new Error("Cet email est déjà utilisé");
+    }
+    const { adresse, ...userFields } = data;
+    // Filtrer les champs undefined
+    const filteredFields = Object.fromEntries(Object.entries(userFields).filter(([_, v]) => v !== undefined && v !== ""));
+    const updated = await prisma_config_1.prisma.user.update({
+        where: { id: userId },
+        data: {
+            ...filteredFields,
+        },
+        include: { livreur: true },
+    });
+    return updated;
+};
+exports.updateUserService = updateUserService;

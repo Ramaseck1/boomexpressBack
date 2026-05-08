@@ -8,6 +8,7 @@ import {
   requestPasswordResetService,
   verifyResetCodeService,
   resetPasswordService,
+  updateUserService,
 } from "../services/authService";
 
 export const loginLivreur = async (req: Request, res: Response) => {
@@ -84,6 +85,16 @@ export const resetPassword = async (req: Request, res: Response) => {
   try {
     const { resetToken, newPassword, confirmPassword } = req.body;
     const result = await resetPasswordService(resetToken, newPassword, confirmPassword);
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const result = await updateUserService(userId, req.body);
     res.json(result);
   } catch (e: any) {
     res.status(400).json({ message: e.message });

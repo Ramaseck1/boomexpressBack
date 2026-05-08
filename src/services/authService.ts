@@ -244,3 +244,54 @@ const generateToken = (user: any) => {
     },
   };
 };
+
+
+export const updateUserService = async (
+  userId: number,
+  data: {
+    nom?: string;
+    prenom?: string;
+    telephone?: string;
+    email?: string;
+    adresse?: string;
+  }
+) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { livreur: true },
+  });
+  if (!user) throw new Error("Utilisateur non trouvé");
+
+  // Vérifier unicité du téléphone si modifié
+  if (data.telephone && data.telephone !== user.telephone) {
+    const existing = await prisma.user.findUnique({
+      where: { telephone: data.telephone },
+    });
+    if (existing) throw new Error("Ce numéro est déjà utilisé");
+  }
+
+  // Vérifier unicité de l'email si modifié
+  if (data.email && data.email !== user.email) {
+    const existing = await prisma.user.findFirst({
+      where: { email: data.email },
+    });
+    if (existing) throw new Error("Cet email est déjà utilisé");
+  }
+
+  const { adresse, ...userFields } = data;
+
+  // Filtrer les champs undefined
+  const filteredFields = Object.fromEntries(
+    Object.entries(userFields).filter(([_, v]) => v !== undefined && v !== "")
+  );
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...filteredFields,
+    },
+    include: { livreur: true },
+  });
+
+  return updated;
+};

@@ -12,6 +12,7 @@ router.post("/register/livreur", authController_1.registerLivreur);
 router.post("/register/admin", (0, authMiddleware_1.authenticate)(["SUPERADMIN"]), authMiddleware_1.onlySuperAdmin, authController_1.registerAdmin);
 // 👤 PROFIL
 router.get("/me", (0, authMiddleware_1.authenticate)(["LIVREUR", "ADMIN", "SUPERADMIN"]), authController_1.getUser);
+router.put("/me", (0, authMiddleware_1.authenticate)(["LIVREUR", "ADMIN", "SUPERADMIN"]), authController_1.updateUser);
 // 🔑 RESET MOT DE PASSE (routes publiques, 3 étapes)
 router.post("/password-reset/request", authController_1.requestPasswordReset); // { identifier }
 router.post("/password-reset/verify", authController_1.verifyResetCode); // { identifier, code }

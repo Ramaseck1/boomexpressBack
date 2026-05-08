@@ -8,6 +8,7 @@ import {
   requestPasswordReset,
   verifyResetCode,
   resetPassword,
+  updateUser
 } from "../controllers/authController";
 import { authenticate, onlySuperAdmin } from "../middleware/authMiddleware";
 
@@ -28,6 +29,12 @@ router.post(
 
 // 👤 PROFIL
 router.get("/me", authenticate(["LIVREUR", "ADMIN", "SUPERADMIN"]), getUser);
+
+router.put(
+  "/me",
+  authenticate(["LIVREUR", "ADMIN", "SUPERADMIN"]),
+  updateUser
+);  
 
 // 🔑 RESET MOT DE PASSE (routes publiques, 3 étapes)
 router.post("/password-reset/request", requestPasswordReset);   // { identifier }
