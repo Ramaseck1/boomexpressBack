@@ -120,21 +120,21 @@ function isCoord(obj: any): obj is { lat: number; lng: number } {
 // ===== GÉOCODAGE — Nominatim =====
 async function getLatLngSmart(adresse: string): Promise<{ lat: number; lng: number }> {
  
-  // ── PRIORITÉ 1 : format "lat,lng" envoyé par le frontend ──────────────────
-  // Le frontend stocke les coords brutes quand l'utilisateur colle un lien Maps.
-  // Pattern : deux floats séparés par une virgule, optionnel espace.
+  // ── PRIORITÉ 1 : coords brutes "lat,lng" envoyées par le frontend ─────────
+  // Le frontend stocke désormais les coords exactes quand l'utilisateur
+  // colle un lien Google Maps ou un Plus Code.
+  // On détecte le format et on retourne immédiatement, sans aucun appel API.
   const rawCoord = adresse.trim().match(/^(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)$/);
   if (rawCoord) {
     const lat = parseFloat(rawCoord[1]);
     const lng = parseFloat(rawCoord[2]);
-    // Validation basique : coords dans les limites terrestres
     if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      console.log("📍 Coords brutes utilisées directement (pas de géocodage) :", { lat, lng });
+      console.log("📍 Coords directes (pas de géocodage) :", { lat, lng });
       return { lat, lng };
     }
   }
  
-  // ── PRIORITÉ 2 : Nominatim adresse complète ────────────────────────────────
+  // ── PRIORITÉ 2 : Nominatim adresse complète, restreint Sénégal ───────────
   try {
     const res = await axios.get("https://nominatim.openstreetmap.org/search", {
       params: {
@@ -158,7 +158,7 @@ async function getLatLngSmart(adresse: string): Promise<{ lat: number; lng: numb
     }
   } catch (_) {}
  
-  // ── PRIORITÉ 3 : Nominatim adresse simplifiée ──────────────────────────────
+  // ── PRIORITÉ 3 : Nominatim adresse simplifiée (plus permissif) ───────────
   try {
     const simplified = simplifierAdresse(adresse);
     console.log("⚠️ Fallback Nominatim simplifié:", simplified);
@@ -177,7 +177,7 @@ async function getLatLngSmart(adresse: string): Promise<{ lat: number; lng: numb
     }
   } catch (_) {}
  
-  // ── PRIORITÉ 4 : Mapbox (fallback final) ──────────────────────────────────
+  // ── PRIORITÉ 4 : Mapbox (fallback final pour adresses texte) ─────────────
   console.log("⚠️ Fallback Mapbox:", adresse);
   return await getLatLngFromMapbox(adresse);
 }
