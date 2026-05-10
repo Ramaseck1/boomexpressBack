@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
+exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.bloquerLivreurCommissionImpayeeService = exports.getLivreursStatutCommissionsService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const axios_1 = __importDefault(require("axios"));
 const cloudinary_1 = __importDefault(require("../config/cloudinary"));
@@ -477,6 +477,75 @@ const getStatsCommissionsGlobalesService = async () => {
     };
 };
 exports.getStatsCommissionsGlobalesService = getStatsCommissionsGlobalesService;
+// ===== LIVREURS AVEC STATUT COMMISSIONS =====
+const getLivreursStatutCommissionsService = async () => {
+    const livreurs = await prisma_config_1.prisma.livreur.findMany({
+        include: { user: true },
+    });
+    return Promise.all(livreurs.map(async (livreur) => {
+        const [count, agg] = await Promise.all([
+            prisma_config_1.prisma.commande.count({
+                where: {
+                    commissionPaye: false,
+                    livraisons: { some: { livreurId: livreur.id, statut: "livree" } },
+                },
+            }),
+            prisma_config_1.prisma.commande.aggregate({
+                where: {
+                    commissionPaye: false,
+                    livraisons: { some: { livreurId: livreur.id, statut: "livree" } },
+                },
+                _sum: { commission: true },
+            }),
+        ]);
+        return {
+            livreurId: livreur.id,
+            nom: livreur.user.nom,
+            prenom: livreur.user.prenom,
+            telephone: livreur.user.telephone,
+            statutCompte: livreur.user.statut,
+            commissionsImpayees: count,
+            montantImpaye: parseFloat((agg._sum.commission ?? 0).toFixed(2)),
+        };
+    }));
+};
+exports.getLivreursStatutCommissionsService = getLivreursStatutCommissionsService;
+// ===== BLOQUER UN LIVREUR POUR COMMISSION IMPAYÉE =====
+const bloquerLivreurCommissionImpayeeService = async (livreurId) => {
+    const livreur = await prisma_config_1.prisma.livreur.findUnique({
+        where: { id: livreurId },
+        include: { user: true },
+    });
+    if (!livreur)
+        throw new Error("Livreur introuvable");
+    // Vérifier qu'il y a bien des commissions impayées
+    const commissionsImpayees = await prisma_config_1.prisma.commande.findMany({
+        where: {
+            commissionPaye: false,
+            livraisons: { some: { livreurId, statut: "livree" } },
+        },
+    });
+    if (commissionsImpayees.length === 0)
+        throw new Error("Ce livreur n'a aucune commission impayée");
+    const montantDu = commissionsImpayees.reduce((sum, cmd) => sum + (cmd.commission || 0), 0);
+    // Créer le blocage avec raison automatique
+    const raison = `Commission impayée : ${commissionsImpayees.length} livraison(s) — montant dû : ${montantDu.toFixed(2)} FCFA`;
+    const blocage = await prisma_config_1.prisma.blocage.create({
+        data: { livreurId, raison, actif: true },
+    });
+    // Désactiver le compte
+    await prisma_config_1.prisma.user.update({
+        where: { id: livreur.userId },
+        data: { statut: "inactif" },
+    });
+    return {
+        blocage,
+        livreurId,
+        nombreCommissionsImpayees: commissionsImpayees.length,
+        montantDu: parseFloat(montantDu.toFixed(2)),
+    };
+};
+exports.bloquerLivreurCommissionImpayeeService = bloquerLivreurCommissionImpayeeService;
 //document
 const uploadDocumentsLivreurService = async (livreurId, files) => {
     const livreur = await prisma_config_1.prisma.livreur.findUnique({ where: { id: livreurId } });

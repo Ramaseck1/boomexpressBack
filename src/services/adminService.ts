@@ -567,6 +567,89 @@ export const getStatsCommissionsGlobalesService = async () => {
   };
 };
 
+
+// ===== LIVREURS AVEC STATUT COMMISSIONS =====
+export const getLivreursStatutCommissionsService = async () => {
+  const livreurs = await prisma.livreur.findMany({
+    include: { user: true },
+  });
+
+  return Promise.all(
+    livreurs.map(async (livreur) => {
+      const [count, agg] = await Promise.all([
+        prisma.commande.count({
+          where: {
+            commissionPaye: false,
+            livraisons: { some: { livreurId: livreur.id, statut: "livree" } },
+          },
+        }),
+        prisma.commande.aggregate({
+          where: {
+            commissionPaye: false,
+            livraisons: { some: { livreurId: livreur.id, statut: "livree" } },
+          },
+          _sum: { commission: true },
+        }),
+      ]);
+
+      return {
+        livreurId:           livreur.id,
+        nom:                 livreur.user.nom,
+        prenom:              livreur.user.prenom,
+        telephone:           livreur.user.telephone,
+        statutCompte:        livreur.user.statut,
+        commissionsImpayees: count,
+        montantImpaye:       parseFloat((agg._sum.commission ?? 0).toFixed(2)),
+      };
+    })
+  );
+};
+
+// ===== BLOQUER UN LIVREUR POUR COMMISSION IMPAYÉE =====
+export const bloquerLivreurCommissionImpayeeService = async (livreurId: number) => {
+  const livreur = await prisma.livreur.findUnique({
+    where: { id: livreurId },
+    include: { user: true },
+  });
+  if (!livreur) throw new Error("Livreur introuvable");
+
+  // Vérifier qu'il y a bien des commissions impayées
+  const commissionsImpayees = await prisma.commande.findMany({
+    where: {
+      commissionPaye: false,
+      livraisons: { some: { livreurId, statut: "livree" } },
+    },
+  });
+
+  if (commissionsImpayees.length === 0)
+    throw new Error("Ce livreur n'a aucune commission impayée");
+
+  const montantDu = commissionsImpayees.reduce(
+    (sum, cmd) => sum + (cmd.commission || 0),
+    0
+  );
+
+  // Créer le blocage avec raison automatique
+  const raison = `Commission impayée : ${commissionsImpayees.length} livraison(s) — montant dû : ${montantDu.toFixed(2)} FCFA`;
+
+  const blocage = await prisma.blocage.create({
+    data: { livreurId, raison, actif: true },
+  });
+
+  // Désactiver le compte
+  await prisma.user.update({
+    where: { id: livreur.userId },
+    data: { statut: "inactif" },
+  });
+
+  return {
+    blocage,
+    livreurId,
+    nombreCommissionsImpayees: commissionsImpayees.length,
+    montantDu: parseFloat(montantDu.toFixed(2)),
+  };
+};
+
 //document
 export const uploadDocumentsLivreurService = async (
   livreurId: number,

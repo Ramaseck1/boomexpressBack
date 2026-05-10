@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.payerCommissionsJour = exports.getStatsCommissionsGlobales = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
+exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.bloquerLivreurCommissionImpayee = exports.getLivreursStatutCommissions = exports.payerCommissionsJour = exports.getStatsCommissionsGlobales = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
 const service = __importStar(require("../services/adminService"));
 // ===== CLIENTS =====
 const getClients = async (req, res) => {
@@ -304,6 +304,29 @@ const payerCommissionsJour = async (req, res) => {
     }
 };
 exports.payerCommissionsJour = payerCommissionsJour;
+const getLivreursStatutCommissions = async (req, res) => {
+    try {
+        res.json(await service.getLivreursStatutCommissionsService());
+    }
+    catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.getLivreursStatutCommissions = getLivreursStatutCommissions;
+const bloquerLivreurCommissionImpayee = async (req, res) => {
+    try {
+        const { livreurId } = req.body;
+        if (!livreurId)
+            return res.status(400).json({ error: "livreurId requis" });
+        const result = await service.bloquerLivreurCommissionImpayeeService(Number(livreurId));
+        res.json({ message: "Livreur bloqué pour commission impayée", ...result });
+    }
+    catch (e) {
+        console.error(e);
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.bloquerLivreurCommissionImpayee = bloquerLivreurCommissionImpayee;
 const uploadDocumentsLivreur = async (req, res) => {
     try {
         const { livreurId } = req.params;

@@ -248,6 +248,26 @@ export const payerCommissionsJour = async (req: Request, res: Response) => {
   }
 };
 
+export const getLivreursStatutCommissions = async (req: Request, res: Response) => {
+  try {
+    res.json(await service.getLivreursStatutCommissionsService());
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+};
+
+export const bloquerLivreurCommissionImpayee = async (req: Request, res: Response) => {
+  try {
+    const { livreurId } = req.body;
+    if (!livreurId) return res.status(400).json({ error: "livreurId requis" });
+
+    const result = await service.bloquerLivreurCommissionImpayeeService(Number(livreurId));
+    res.json({ message: "Livreur bloqué pour commission impayée", ...result });
+  } catch (e: any) {
+    console.error(e);
+    res.status(400).json({ error: e.message });
+  }
+};
 
 export const uploadDocumentsLivreur = async (req: Request, res: Response) => {
   try {

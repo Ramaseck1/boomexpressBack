@@ -52,4 +52,8 @@ router.get("/commissions/jour",           controller.getCommissionsJour);
 router.post("/commissions/payer",         controller.payerCommissionsJour);
 router.get("/commissions/stats", controller.getStatsCommissionsGlobales);
 
+
+router.get("/livreurs/statut-commissions", controller.getLivreursStatutCommissions);
+router.post("/livreurs/bloquer-commission", controller.bloquerLivreurCommissionImpayee);
+
 export default router;
