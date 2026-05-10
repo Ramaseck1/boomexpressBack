@@ -598,6 +598,7 @@ export const getLivreursStatutCommissionsService = async () => {
         prenom:              livreur.user.prenom,
         telephone:           livreur.user.telephone,
         statutCompte:        livreur.user.statut,
+        estBloque:           livreur.estBloque,          // ✅ inclus
         commissionsImpayees: count,
         montantImpaye:       parseFloat((agg._sum.commission ?? 0).toFixed(2)),
       };
@@ -613,7 +614,6 @@ export const bloquerLivreurCommissionImpayeeService = async (livreurId: number) 
   });
   if (!livreur) throw new Error("Livreur introuvable");
 
-  // Vérifier qu'il y a bien des commissions impayées
   const commissionsImpayees = await prisma.commande.findMany({
     where: {
       commissionPaye: false,
@@ -629,18 +629,21 @@ export const bloquerLivreurCommissionImpayeeService = async (livreurId: number) 
     0
   );
 
-  // Créer le blocage avec raison automatique
   const raison = `Commission impayée : ${commissionsImpayees.length} livraison(s) — montant dû : ${montantDu.toFixed(2)} FCFA`;
 
-  const blocage = await prisma.blocage.create({
-    data: { livreurId, raison, actif: true },
-  });
-
-  // Désactiver le compte
-  await prisma.user.update({
-    where: { id: livreur.userId },
-    data: { statut: "inactif" },
-  });
+  const [blocage] = await prisma.$transaction([
+    prisma.blocage.create({
+      data: { livreurId, raison, actif: true },
+    }),
+    prisma.livreur.update({
+      where: { id: livreurId },
+      data:  { estBloque: true },           // ✅ marque bloqué
+    }),
+    prisma.user.update({
+      where: { id: livreur.userId },
+      data:  { statut: "inactif" },
+    }),
+  ]);
 
   return {
     blocage,
@@ -648,6 +651,36 @@ export const bloquerLivreurCommissionImpayeeService = async (livreurId: number) 
     nombreCommissionsImpayees: commissionsImpayees.length,
     montantDu: parseFloat(montantDu.toFixed(2)),
   };
+};
+
+// ===== DÉBLOQUER UN LIVREUR =====
+export const debloquerLivreurService = async (livreurId: number) => {
+  const livreur = await prisma.livreur.findUnique({
+    where: { id: livreurId },
+    include: { user: true },
+  });
+  if (!livreur) throw new Error("Livreur introuvable");
+  if (!livreur.estBloque) throw new Error("Ce livreur n'est pas bloqué");
+
+  await prisma.$transaction([
+    // Désactiver tous les blocages actifs
+    prisma.blocage.updateMany({
+      where: { livreurId, actif: true },
+      data:  { actif: false },
+    }),
+    // Marquer comme débloqué
+    prisma.livreur.update({
+      where: { id: livreurId },
+      data:  { estBloque: false },
+    }),
+    // Réactiver le compte
+    prisma.user.update({
+      where: { id: livreur.userId },
+      data:  { statut: "actif" },
+    }),
+  ]);
+
+  return { livreurId, message: "Livreur débloqué avec succès" };
 };
 
 //document

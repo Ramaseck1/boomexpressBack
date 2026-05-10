@@ -53,12 +53,13 @@ router.post("/commandes", controller.createCommande);
 router.put("/commandes/:commandeId", controller.updateCommande);
 router.delete("/commandes/:commandeId", controller.deleteCommande);
 router.post("/commandes/assigner", controller.assignerCommande);
-// Livreurs — routes statiques en premier
+// Livreurs — routes statiques AVANT les routes dynamiques (:livreurId)
 router.get("/livreurs", controller.getLivreurs);
 router.get("/livreurs/statut-commissions", controller.getLivreursStatutCommissions);
 router.post("/livreurs/bloquer-commission", controller.bloquerLivreurCommissionImpayee);
+router.post("/livreurs/debloquer", controller.debloquerLivreur);
 router.post("/livreurs/bloquer", controller.bloquerLivreur);
-// Livreurs — routes dynamiques après
+// Livreurs — routes dynamiques
 router.get("/livreurs/:livreurId", controller.getProfilLivreur);
 router.patch("/livreurs/:livreurId/toggle", controller.toggleCompteLivreur);
 router.post("/livreurs/:livreurId/documents", uploadDocuments_1.uploadDocuments.fields([

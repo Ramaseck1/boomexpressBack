@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.bloquerLivreurCommissionImpayeeService = exports.getLivreursStatutCommissionsService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
+exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.debloquerLivreurService = exports.bloquerLivreurCommissionImpayeeService = exports.getLivreursStatutCommissionsService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const axios_1 = __importDefault(require("axios"));
 const cloudinary_1 = __importDefault(require("../config/cloudinary"));
@@ -504,6 +504,7 @@ const getLivreursStatutCommissionsService = async () => {
             prenom: livreur.user.prenom,
             telephone: livreur.user.telephone,
             statutCompte: livreur.user.statut,
+            estBloque: livreur.estBloque, // ✅ inclus
             commissionsImpayees: count,
             montantImpaye: parseFloat((agg._sum.commission ?? 0).toFixed(2)),
         };
@@ -518,7 +519,6 @@ const bloquerLivreurCommissionImpayeeService = async (livreurId) => {
     });
     if (!livreur)
         throw new Error("Livreur introuvable");
-    // Vérifier qu'il y a bien des commissions impayées
     const commissionsImpayees = await prisma_config_1.prisma.commande.findMany({
         where: {
             commissionPaye: false,
@@ -528,16 +528,20 @@ const bloquerLivreurCommissionImpayeeService = async (livreurId) => {
     if (commissionsImpayees.length === 0)
         throw new Error("Ce livreur n'a aucune commission impayée");
     const montantDu = commissionsImpayees.reduce((sum, cmd) => sum + (cmd.commission || 0), 0);
-    // Créer le blocage avec raison automatique
     const raison = `Commission impayée : ${commissionsImpayees.length} livraison(s) — montant dû : ${montantDu.toFixed(2)} FCFA`;
-    const blocage = await prisma_config_1.prisma.blocage.create({
-        data: { livreurId, raison, actif: true },
-    });
-    // Désactiver le compte
-    await prisma_config_1.prisma.user.update({
-        where: { id: livreur.userId },
-        data: { statut: "inactif" },
-    });
+    const [blocage] = await prisma_config_1.prisma.$transaction([
+        prisma_config_1.prisma.blocage.create({
+            data: { livreurId, raison, actif: true },
+        }),
+        prisma_config_1.prisma.livreur.update({
+            where: { id: livreurId },
+            data: { estBloque: true }, // ✅ marque bloqué
+        }),
+        prisma_config_1.prisma.user.update({
+            where: { id: livreur.userId },
+            data: { statut: "inactif" },
+        }),
+    ]);
     return {
         blocage,
         livreurId,
@@ -546,6 +550,36 @@ const bloquerLivreurCommissionImpayeeService = async (livreurId) => {
     };
 };
 exports.bloquerLivreurCommissionImpayeeService = bloquerLivreurCommissionImpayeeService;
+// ===== DÉBLOQUER UN LIVREUR =====
+const debloquerLivreurService = async (livreurId) => {
+    const livreur = await prisma_config_1.prisma.livreur.findUnique({
+        where: { id: livreurId },
+        include: { user: true },
+    });
+    if (!livreur)
+        throw new Error("Livreur introuvable");
+    if (!livreur.estBloque)
+        throw new Error("Ce livreur n'est pas bloqué");
+    await prisma_config_1.prisma.$transaction([
+        // Désactiver tous les blocages actifs
+        prisma_config_1.prisma.blocage.updateMany({
+            where: { livreurId, actif: true },
+            data: { actif: false },
+        }),
+        // Marquer comme débloqué
+        prisma_config_1.prisma.livreur.update({
+            where: { id: livreurId },
+            data: { estBloque: false },
+        }),
+        // Réactiver le compte
+        prisma_config_1.prisma.user.update({
+            where: { id: livreur.userId },
+            data: { statut: "actif" },
+        }),
+    ]);
+    return { livreurId, message: "Livreur débloqué avec succès" };
+};
+exports.debloquerLivreurService = debloquerLivreurService;
 //document
 const uploadDocumentsLivreurService = async (livreurId, files) => {
     const livreur = await prisma_config_1.prisma.livreur.findUnique({ where: { id: livreurId } });
