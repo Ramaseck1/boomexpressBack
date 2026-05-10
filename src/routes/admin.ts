@@ -23,13 +23,15 @@ router.put("/commandes/:commandeId", controller.updateCommande);
 router.delete("/commandes/:commandeId", controller.deleteCommande);
 router.post("/commandes/assigner", controller.assignerCommande);
 
-// Livreurs
+// Livreurs — routes statiques en premier
 router.get("/livreurs", controller.getLivreurs);
-router.get("/livreurs/:livreurId", controller.getProfilLivreur);
-router.patch("/livreurs/:livreurId/toggle", controller.toggleCompteLivreur);
+router.get("/livreurs/statut-commissions", controller.getLivreursStatutCommissions);
+router.post("/livreurs/bloquer-commission", controller.bloquerLivreurCommissionImpayee);
 router.post("/livreurs/bloquer", controller.bloquerLivreur);
 
-// ✅ Documents livreur
+// Livreurs — routes dynamiques après
+router.get("/livreurs/:livreurId", controller.getProfilLivreur);
+router.patch("/livreurs/:livreurId/toggle", controller.toggleCompteLivreur);
 router.post(
   "/livreurs/:livreurId/documents",
   uploadDocuments.fields([
@@ -42,18 +44,12 @@ router.post(
   controller.uploadDocumentsLivreur
 );
 router.get("/livreurs/:livreurId/documents", controller.getDocumentsLivreur);
-router.post("/livreurs/:livreurId/valider",  controller.validerProfilLivreur);
+router.post("/livreurs/:livreurId/valider", controller.validerProfilLivreur);
 router.delete("/livreurs/:livreurId/documents", controller.supprimerDocument);
-// Paiements
-/* router.post("/paiements/payer", controller.marquerPaiementJour);
- */
+
 // Commissions
-router.get("/commissions/jour",           controller.getCommissionsJour);
-router.post("/commissions/payer",         controller.payerCommissionsJour);
+router.get("/commissions/jour", controller.getCommissionsJour);
+router.post("/commissions/payer", controller.payerCommissionsJour);
 router.get("/commissions/stats", controller.getStatsCommissionsGlobales);
-
-
-router.get("/livreurs/statut-commissions", controller.getLivreursStatutCommissions);
-router.post("/livreurs/bloquer-commission", controller.bloquerLivreurCommissionImpayee);
 
 export default router;
