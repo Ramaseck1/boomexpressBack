@@ -119,7 +119,22 @@ function isCoord(obj: any): obj is { lat: number; lng: number } {
 
 // ===== GÉOCODAGE — Nominatim =====
 async function getLatLngSmart(adresse: string): Promise<{ lat: number; lng: number }> {
-  // Essai 1 : Nominatim adresse complète — restreint au Sénégal + viewbox Saint-Louis
+ 
+  // ── PRIORITÉ 1 : format "lat,lng" envoyé par le frontend ──────────────────
+  // Le frontend stocke les coords brutes quand l'utilisateur colle un lien Maps.
+  // Pattern : deux floats séparés par une virgule, optionnel espace.
+  const rawCoord = adresse.trim().match(/^(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)$/);
+  if (rawCoord) {
+    const lat = parseFloat(rawCoord[1]);
+    const lng = parseFloat(rawCoord[2]);
+    // Validation basique : coords dans les limites terrestres
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      console.log("📍 Coords brutes utilisées directement (pas de géocodage) :", { lat, lng });
+      return { lat, lng };
+    }
+  }
+ 
+  // ── PRIORITÉ 2 : Nominatim adresse complète ────────────────────────────────
   try {
     const res = await axios.get("https://nominatim.openstreetmap.org/search", {
       params: {
@@ -127,7 +142,7 @@ async function getLatLngSmart(adresse: string): Promise<{ lat: number; lng: numb
         format: "json",
         limit: 1,
         countrycodes: "sn",
-viewbox: "-17.5,16.7,-11.3,12.3",
+        viewbox: "-17.5,16.7,-11.3,12.3",
         bounded: 1,
       },
       headers: {
@@ -142,18 +157,13 @@ viewbox: "-17.5,16.7,-11.3,12.3",
       return { lat, lng };
     }
   } catch (_) {}
-
-  // Essai 2 : Nominatim adresse simplifiée (sans viewbox — plus permissif)
+ 
+  // ── PRIORITÉ 3 : Nominatim adresse simplifiée ──────────────────────────────
   try {
     const simplified = simplifierAdresse(adresse);
     console.log("⚠️ Fallback Nominatim simplifié:", simplified);
     const res = await axios.get("https://nominatim.openstreetmap.org/search", {
-      params: {
-        q: simplified,
-        format: "json",
-        limit: 1,
-        countrycodes: "sn",
-      },
+      params: { q: simplified, format: "json", limit: 1, countrycodes: "sn" },
       headers: {
         "User-Agent": "BoomExpressApp/1.0 (seckrama098@gmail.com)",
         "Accept-Language": "fr-FR",
@@ -166,12 +176,11 @@ viewbox: "-17.5,16.7,-11.3,12.3",
       return { lat, lng };
     }
   } catch (_) {}
-
-  // Essai 3 : Mapbox (plus robuste sur les quartiers sénégalais)
+ 
+  // ── PRIORITÉ 4 : Mapbox (fallback final) ──────────────────────────────────
   console.log("⚠️ Fallback Mapbox:", adresse);
   return await getLatLngFromMapbox(adresse);
 }
-
 // ===== GÉOCODAGE — Mapbox =====
 async function getLatLngFromMapbox(adresse: string): Promise<{ lat: number; lng: number }> {
   const ACCESS_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
