@@ -6,7 +6,7 @@ import {
   guiderVersCollecteService,   // 🗺️ Phase 1 : livreur → collecte
   demarrerNavigationService,   // 🗺️ Phase 2 : collecte → livraison
 } from "./MapboxNavigation/navigationService";
-import type { Coordonnees } from "./MapboxNavigation/mapboxService";
+import type { Coordonnees } from "./MapboxNavigation/googleMapsService";
 
 // ─── Livreurs ────────────────────────────────────────────────────────────────
 

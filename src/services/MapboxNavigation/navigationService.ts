@@ -7,7 +7,7 @@ import {
   geocoderAdresse,
   getProchaineInstruction,
   type Coordonnees,
-} from "./mapboxService";
+} from "./googleMapsService";
 
 // ─── Phase 1 : Guider le livreur vers l'adresse de collecte ──────────────────
 // Appelé dès que le livreur accepte la mission, depuis sa position GPS actuelle

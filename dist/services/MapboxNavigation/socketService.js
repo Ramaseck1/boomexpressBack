@@ -5,7 +5,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getIO = exports.initSocket = void 0;
 const socket_io_1 = require("socket.io");
 const prisma_config_1 = require("../../prisma/prisma.config");
-const mapboxService_1 = require("./mapboxService");
+const googleMapsService_1 = require("./googleMapsService");
 // ─── Instance globale Socket.IO ───────────────────────────────────────────────
 let io;
 // Stockage en mémoire des sessions de navigation actives
@@ -68,7 +68,7 @@ const initSocket = (httpServer) => {
                     const secondesDepuisDernierRecalcul = (maintenant.getTime() - session.dernierRecalcul.getTime()) / 1000;
                     // Recalcul max 1 fois toutes les 30 secondes pour éviter le spam API
                     if (secondesDepuisDernierRecalcul > 30) {
-                        const { recalcule, route } = await (0, mapboxService_1.recalculerRoute)(positionActuelle, session.destination, 50 // seuil 50 mètres
+                        const { recalcule, route } = await (0, googleMapsService_1.recalculerRoute)(positionActuelle, session.destination, 50 // seuil 50 mètres
                         );
                         if (recalcule && route) {
                             console.log(`🔄 Nouvelle route calculée pour livreur ${livreurId}`);
@@ -94,7 +94,7 @@ const initSocket = (httpServer) => {
                         }
                     }
                     // 4️⃣ ETA mise à jour en temps réel
-                    const distanceRestante = (0, mapboxService_1.calculerDistanceHaversine)(positionActuelle, session.destination);
+                    const distanceRestante = (0, googleMapsService_1.calculerDistanceHaversine)(positionActuelle, session.destination);
                     const vitesseMoyenne = vitesse && vitesse > 0 ? vitesse * (1000 / 3600) : 8; // m/s
                     const secondesRestantes = distanceRestante / vitesseMoyenne;
                     const etaMiseAJour = new Date(Date.now() + secondesRestantes * 1000);

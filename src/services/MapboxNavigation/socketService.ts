@@ -4,7 +4,7 @@
 import { Server as HttpServer } from "http";
 import { Server as SocketServer, Socket } from "socket.io";
 import { prisma } from "../../prisma/prisma.config";
-import { recalculerRoute, calculerDistanceHaversine, type Coordonnees } from "./mapboxService";
+import { recalculerRoute, calculerDistanceHaversine, type Coordonnees } from "./googleMapsService";
 
 // ─── Instance globale Socket.IO ───────────────────────────────────────────────
 

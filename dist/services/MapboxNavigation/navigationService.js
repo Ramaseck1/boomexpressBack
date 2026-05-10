@@ -4,7 +4,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getETAService = exports.getInstructionService = exports.demarrerNavigationService = exports.guiderVersCollecteService = void 0;
 const prisma_config_1 = require("../../prisma/prisma.config");
-const mapboxService_1 = require("./mapboxService");
+const googleMapsService_1 = require("./googleMapsService");
 // ─── Phase 1 : Guider le livreur vers l'adresse de collecte ──────────────────
 // Appelé dès que le livreur accepte la mission, depuis sa position GPS actuelle
 const guiderVersCollecteService = async (livraisonId, positionLivreur) => {
@@ -23,13 +23,13 @@ const guiderVersCollecteService = async (livraisonId, positionLivreur) => {
     const adresseCollecte = livraison.commande.client.adresse;
     if (!adresseCollecte)
         throw new Error("Adresse de collecte manquante");
-    const collecteCoords = await (0, mapboxService_1.geocoderAdresse)(adresseCollecte);
+    const collecteCoords = await (0, googleMapsService_1.geocoderAdresse)(adresseCollecte);
     // ✅ Log pour confirmer les deux bornes de la route
     console.log(`[Phase 1] Calcul route :`);
     console.log(`  DÉPART   (livreur)  : lat=${positionLivreur.lat}, lng=${positionLivreur.lng}`);
     console.log(`  ARRIVÉE  (collecte) : lat=${collecteCoords.lat}, lng=${collecteCoords.lng} — "${adresseCollecte}"`);
     // ✅ livreur GPS → adresse collecte (jamais collecte → livraison)
-    const route = await (0, mapboxService_1.calculerRoute)([positionLivreur, collecteCoords], "driving-traffic");
+    const route = await (0, googleMapsService_1.calculerRoute)([positionLivreur, collecteCoords], "driving-traffic");
     await prisma_config_1.prisma.livraison.update({
         where: { id: livraisonId },
         data: {
@@ -70,7 +70,7 @@ const demarrerNavigationService = async (livraisonId, positionActuelle // positi
     if (!destinationAdresse)
         throw new Error("Adresse de livraison manquante");
     // Géocoder la destination finale
-    const destination = await (0, mapboxService_1.geocoderAdresse)(destinationAdresse);
+    const destination = await (0, googleMapsService_1.geocoderAdresse)(destinationAdresse);
     // Départ = position GPS actuelle du livreur si fournie, sinon adresse de collecte
     let depart;
     if (positionActuelle) {
@@ -81,10 +81,10 @@ const demarrerNavigationService = async (livraisonId, positionActuelle // positi
         const adresseCollecte = livraison.commande.client.adresse;
         if (!adresseCollecte)
             throw new Error("Adresse de collecte manquante");
-        depart = await (0, mapboxService_1.geocoderAdresse)(adresseCollecte);
+        depart = await (0, googleMapsService_1.geocoderAdresse)(adresseCollecte);
     }
     // Route : position actuelle du livreur → adresse de livraison finale
-    const route = await (0, mapboxService_1.calculerRoute)([depart, destination], "driving-traffic");
+    const route = await (0, googleMapsService_1.calculerRoute)([depart, destination], "driving-traffic");
     // Mettre à jour la destination en base (maintenant c'est l'adresse de livraison)
     await prisma_config_1.prisma.livraison.update({
         where: { id: livraisonId },
@@ -124,8 +124,8 @@ const getInstructionService = async (livraisonId, positionActuelle) => {
         lat: livraison.destinationLat,
         lng: livraison.destinationLng,
     };
-    const route = await (0, mapboxService_1.calculerRoute)([positionActuelle, destination]);
-    const instruction = (0, mapboxService_1.getProchaineInstruction)(positionActuelle, route.etapes);
+    const route = await (0, googleMapsService_1.calculerRoute)([positionActuelle, destination]);
+    const instruction = (0, googleMapsService_1.getProchaineInstruction)(positionActuelle, route.etapes);
     return {
         instruction: instruction?.instruction ?? "Vous êtes arrivé à destination",
         distanceProchainVirage: instruction?.distanceRestante ?? 0,
@@ -148,7 +148,7 @@ const getETAService = async (livraisonId, positionActuelle) => {
         lat: livraison.destinationLat,
         lng: livraison.destinationLng,
     };
-    const route = await (0, mapboxService_1.calculerRoute)([positionActuelle, destination], "driving-traffic");
+    const route = await (0, googleMapsService_1.calculerRoute)([positionActuelle, destination], "driving-traffic");
     return {
         eta: route.eta,
         distanceRestanteMetres: route.distanceTotale,
