@@ -98,21 +98,21 @@ function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
 // ===== NORMALISATION ADRESSE =====
 function normalizeAdresse(adresse: string) {
   let cleaned = adresse.replace(/\+/g, " ").trim();
-  if (!cleaned.toLowerCase().includes("saint-louis")) cleaned += ", Saint-Louis";
+
+  // Ajouter Sénégal si absent
   if (
     !cleaned.toLowerCase().includes("senegal") &&
     !cleaned.toLowerCase().includes("sénégal")
   ) {
     cleaned += ", Senegal";
   }
+
   return cleaned;
 }
-
 function simplifierAdresse(adresse: string): string {
   const premiereMention = adresse.split(",")[0].trim();
-  return premiereMention + ", Saint-Louis, Senegal";
+  return premiereMention + ", Senegal";
 }
-
 function isCoord(obj: any): obj is { lat: number; lng: number } {
   return obj && typeof obj.lat === "number" && typeof obj.lng === "number";
 }
@@ -127,7 +127,7 @@ async function getLatLngSmart(adresse: string): Promise<{ lat: number; lng: numb
         format: "json",
         limit: 1,
         countrycodes: "sn",
-        viewbox: "-16.8,16.4,-15.9,15.7",
+viewbox: "-17.5,16.7,-11.3,12.3",
         bounded: 1,
       },
       headers: {
@@ -218,6 +218,25 @@ async function validateAdresseSaintLouis(adresse: string) {
   return coords;
 }
 
+
+// ===== VALIDATION ZONE SÉNÉGAL =====
+async function validateAdresseSenegal(adresse: string) {
+  const normalized = normalizeAdresse(adresse);
+  const coords = await getLatLngSmart(normalized);
+
+  // Bounding box du Sénégal entier
+  const latMin = 12.3, latMax = 16.7;
+  const lngMin = -17.5, lngMax = -11.3;
+
+  if (
+    coords.lat < latMin || coords.lat > latMax ||
+    coords.lng < lngMin || coords.lng > lngMax
+  ) {
+    throw new Error("L'adresse est hors du Sénégal");
+  }
+
+  return coords;
+}
 // ===== DISTANCE ROUTE — Mapbox Directions =====
 async function getDistanceRouteKmMapbox(
   depart: { lat: number; lng: number },
@@ -276,14 +295,15 @@ export const createCommandeService = async (data: any) => {
   if (isCoord(client.adresse)) {
     depart = client.adresse as any;
   } else {
-    depart = await validateAdresseSaintLouis(client.adresse as string);
+depart = await validateAdresseSenegal(client.adresse as string);
   }
 
   // ── Destination : adresse de livraison ✅ livraisonAdresse utilisé partout ──
   if (isCoord(livraisonAdresse)) {
     dest = livraisonAdresse as any;
   } else {
-    dest = await validateAdresseSaintLouis(livraisonAdresse as string);
+   dest = await validateAdresseSenegal(livraisonAdresse as string);
+
   }
 
   const distanceKm = await getDistanceRouteKmMapbox(depart, dest);
