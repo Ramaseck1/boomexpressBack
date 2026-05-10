@@ -60,19 +60,26 @@ export const createClientEtCommandeService = async (data: any) => {
       nom:                   data.nom,
       prenom:                data.prenom,
       telephone:             data.telephone,
-      adresse:               data.adresse,
-      adresseLivraison:      data.adresseLivraison,
       telephoneDestinataire: data.telephoneDestinataire,
+ 
+      // ✅ Stocker le texte lisible en base (pas les coords brutes)
+      adresse:          data.adresse,
+      adresseLivraison: data.adresseLivraison,
     },
   });
-
+ 
   const commande = await createCommandeService({
     clientId:         client.id,
     adresseLivraison: data.adresseLivraison,
+ 
+    // ✅ Passer les coords exactes si disponibles (court-circuite le géocodage)
+    departCoords:      data.adresseCoords          ?? null,
+    destinationCoords: data.adresseLivraisonCoords ?? null,
   });
-
+ 
   return { client, commande };
 };
+
 
 // ===== SUPPRIMER UNE COMMANDE =====
 export const deleteCommandeService = async (commandeId: number) =>
@@ -292,35 +299,36 @@ async function getDistanceRouteKmOSRM(
 export const createCommandeService = async (data: any) => {
   const client = await prisma.client.findUnique({ where: { id: data.clientId } });
   if (!client) throw new Error("Client introuvable");
-
-  // ✅ Utiliser livraisonAdresse (adresse du client si non fournie dans le body)
+ 
   const livraisonAdresse = data.adresseLivraison || client.adresseLivraison;
   if (!livraisonAdresse) throw new Error("Adresse de livraison introuvable");
-
-  let depart: { lat: number; lng: number };
-  let dest: { lat: number; lng: number };
-
-  // ── Départ : adresse de collecte du client ──
-  if (isCoord(client.adresse)) {
-    depart = client.adresse as any;
+ 
+  let depart:  { lat: number; lng: number };
+  let dest:    { lat: number; lng: number };
+ 
+  // ✅ Utiliser les coords directes si transmises (pas de géocodage = position exacte)
+  if (data.departCoords) {
+    const [lat, lng] = data.departCoords.split(",").map(Number);
+    depart = { lat, lng };
+    console.log("📍 Départ coords directes :", depart);
   } else {
-depart = await validateAdresseSenegal(client.adresse as string);
+    depart = await validateAdresseSenegal(client.adresse as string);
   }
-
-  // ── Destination : adresse de livraison ✅ livraisonAdresse utilisé partout ──
-  if (isCoord(livraisonAdresse)) {
-    dest = livraisonAdresse as any;
+ 
+  if (data.destinationCoords) {
+    const [lat, lng] = data.destinationCoords.split(",").map(Number);
+    dest = { lat, lng };
+    console.log("📍 Destination coords directes :", dest);
   } else {
-   dest = await validateAdresseSenegal(livraisonAdresse as string);
-
+    dest = await validateAdresseSenegal(livraisonAdresse as string);
   }
-
+ 
   const distanceKm = await getDistanceRouteKmMapbox(depart, dest);
   console.log("📏 Distance (km):", distanceKm);
-
+ 
   const montant    = TARIF_BASE + Math.ceil(distanceKm) * TARIF_KM;
   const commission = montant * 0.1;
-
+ 
   const commande = await prisma.commande.create({
     data: {
       clientId:       client.id,
@@ -330,10 +338,10 @@ depart = await validateAdresseSenegal(client.adresse as string);
       commissionPaye: false,
     },
   });
-
+ 
   return commande;
 };
-
+ 
 // ===== LISTER LES COMMANDES =====
 export const getCommandesService = async (query: any) => {
   const { statut, dateDebut, dateFin } = query;

@@ -49,14 +49,18 @@ const createClientEtCommandeService = async (data) => {
             nom: data.nom,
             prenom: data.prenom,
             telephone: data.telephone,
+            telephoneDestinataire: data.telephoneDestinataire,
+            // ✅ Stocker le texte lisible en base (pas les coords brutes)
             adresse: data.adresse,
             adresseLivraison: data.adresseLivraison,
-            telephoneDestinataire: data.telephoneDestinataire,
         },
     });
     const commande = await (0, exports.createCommandeService)({
         clientId: client.id,
         adresseLivraison: data.adresseLivraison,
+        // ✅ Passer les coords exactes si disponibles (court-circuite le géocodage)
+        departCoords: data.adresseCoords ?? null,
+        destinationCoords: data.adresseLivraisonCoords ?? null,
     });
     return { client, commande };
 };
@@ -236,22 +240,24 @@ const createCommandeService = async (data) => {
     const client = await prisma_config_1.prisma.client.findUnique({ where: { id: data.clientId } });
     if (!client)
         throw new Error("Client introuvable");
-    // ✅ Utiliser livraisonAdresse (adresse du client si non fournie dans le body)
     const livraisonAdresse = data.adresseLivraison || client.adresseLivraison;
     if (!livraisonAdresse)
         throw new Error("Adresse de livraison introuvable");
     let depart;
     let dest;
-    // ── Départ : adresse de collecte du client ──
-    if (isCoord(client.adresse)) {
-        depart = client.adresse;
+    // ✅ Utiliser les coords directes si transmises (pas de géocodage = position exacte)
+    if (data.departCoords) {
+        const [lat, lng] = data.departCoords.split(",").map(Number);
+        depart = { lat, lng };
+        console.log("📍 Départ coords directes :", depart);
     }
     else {
         depart = await validateAdresseSenegal(client.adresse);
     }
-    // ── Destination : adresse de livraison ✅ livraisonAdresse utilisé partout ──
-    if (isCoord(livraisonAdresse)) {
-        dest = livraisonAdresse;
+    if (data.destinationCoords) {
+        const [lat, lng] = data.destinationCoords.split(",").map(Number);
+        dest = { lat, lng };
+        console.log("📍 Destination coords directes :", dest);
     }
     else {
         dest = await validateAdresseSenegal(livraisonAdresse);
