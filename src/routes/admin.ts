@@ -23,6 +23,7 @@ router.put("/commandes/:commandeId",            controller.updateCommande);
 router.delete("/commandes/:commandeId",         controller.deleteCommande);
 router.post("/commandes/assigner",              controller.assignerCommande);
 router.post("/commandes/assigner-proche", controller.assignerCommandeAuPlusProche);
+router.get("/livreurs/positions", controller.getLivreursPositions);
 
 
 // Livreurs — routes statiques AVANT les routes dynamiques (:livreurId)

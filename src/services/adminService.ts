@@ -431,6 +431,27 @@ export const assignerCommandeAuPlusProche = async (commandeId: number) => {
   };
 };
 
+
+// ===== POSITIONS EN TEMPS RÉEL DES LIVREURS =====
+export const getLivreursPositionsService = async () => {
+  const livreurs = await prisma.livreur.findMany({
+    include: { user: true },
+  });
+
+  return livreurs.map((l) => ({
+    id:               l.id,
+    nom:              l.user.nom,
+    prenom:           l.user.prenom,
+    telephone:        l.user.telephone,
+    disponible:       l.disponible,
+    estBloque:        l.estBloque,
+    profilValide:     l.profilValide,
+    statut:           l.user.statut,
+    lat:              l.latActuelle,
+    lng:              l.lngActuelle,
+    derniereActivite: l.derniereActivite,
+  }));
+};
 // ===== LIVREURS =====
 export const getLivreursService = async () =>
   prisma.livreur.findMany({ include: { user: true } });

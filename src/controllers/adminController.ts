@@ -159,6 +159,14 @@ export const assignerCommandeAuPlusProche = async (req: Request, res: Response) 
   }
 };
 
+export const getLivreursPositions = async (req: Request, res: Response) => {
+  try {
+    res.json(await service.getLivreursPositionsService());
+  } catch (e: any) {
+    console.error(e);
+    res.status(500).json({ error: "Service indisponible" });
+  }
+};
 // ===== LIVREURS =====
 export const getLivreurs = async (req: Request, res: Response) => {
   try { res.json(await service.getLivreursService()); } 
