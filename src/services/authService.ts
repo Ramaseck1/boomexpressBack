@@ -31,18 +31,36 @@ const sendCodeByEmail = async (email: string, code: string) => {
 };
 // LOGIN LIVREUR
 export const loginLivreurService = async (telephone: string, password: string) => {
-  const user = await prisma.user.findUnique({
-    where: { telephone },
-  });
+  // Erreurs métier = messages précis qu'on veut afficher à l'utilisateur
+  const BUSINESS_ERRORS = [
+    "Livreur non trouvé",
+    "Mot de passe incorrect",
+  ];
 
-  if (!user || user.role !== "LIVREUR") {
-    throw new Error("Livreur non trouvé");
+  try {
+    const user = await prisma.user.findUnique({
+      where: { telephone },
+    });
+
+    if (!user || user.role !== "LIVREUR") {
+      throw new Error("Livreur non trouvé");
+    }
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) throw new Error("Mot de passe incorrect");
+
+    return generateToken(user);
+
+  } catch (error: any) {
+    // Laisser passer les erreurs métier telles quelles
+    if (BUSINESS_ERRORS.includes(error.message)) {
+      throw error;
+    }
+
+    // Masquer les erreurs techniques (Prisma, DB, réseau...)
+    console.error("[loginLivreurService]", error); // log serveur uniquement
+    throw new Error("Service indisponible");
   }
-
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) throw new Error("Mot de passe incorrect");
-
-  return generateToken(user);
 };
 // REGISTER LIVREUR
 // REGISTER LIVREUR
