@@ -377,6 +377,59 @@ export const assignerCommandeService = async (commandeId: number, livreurId: num
 
   return livraison;
 };
+export const assignerCommandeAuPlusProche = async (commandeId: number) => {
+  const commande = await prisma.commande.findUnique({
+    where: { id: commandeId },
+    include: { client: true },
+  });
+  if (!commande) throw new Error("Commande introuvable");
+
+  const dixMinutesAvant = new Date(Date.now() - 10 * 60 * 1000);
+
+  const livreurs = await prisma.livreur.findMany({
+    where: {
+      disponible:      true,
+      estBloque:       false,
+      profilValide:    true,
+      latActuelle:     { not: null },  // ✅ vrai nom
+      lngActuelle:     { not: null },  // ✅ vrai nom
+      derniereActivite: { gte: dixMinutesAvant },
+      user:            { statut: "actif" },
+    },
+    include: { user: true },
+  });
+
+  if (livreurs.length === 0)
+    throw new Error("Aucun livreur disponible avec une position récente");
+
+  const departCoords = await getLatLngSmart(commande.client?.adresse as string);
+  if (!departCoords) throw new Error("Impossible de géocoder l'adresse de départ");
+
+  let plusProche = livreurs[0];
+  let distanceMin = Infinity;
+
+  for (const livreur of livreurs) {
+    const dist = getDistanceKm(
+      departCoords.lat, departCoords.lng,
+      livreur.latActuelle!,  // ✅ vrai nom
+      livreur.lngActuelle!   // ✅ vrai nom
+    );
+    if (dist < distanceMin) {
+      distanceMin = dist;
+      plusProche  = livreur;
+    }
+  }
+
+  const livraison = await prisma.livraison.create({
+    data: { commandeId, livreurId: plusProche.id, statut: "en_attente" },
+  });
+
+  return {
+    livraison,
+    livreur:    plusProche,
+    distanceKm: Math.round(distanceMin * 100) / 100,
+  };
+};
 
 // ===== LIVREURS =====
 export const getLivreursService = async () =>

@@ -187,6 +187,21 @@ export const historique = async (req: Request, res: Response) => {
   }
 };
 
+export const updatePosition = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { lat, lng } = req.body;
+
+    if (lat === undefined || lng === undefined)
+      return res.status(400).json({ error: "lat et lng requis" });
+
+    const data = await service.updatePositionService(userId, Number(lat), Number(lng));
+    res.json({ message: "Position mise à jour", data });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
 // Revenus
 export const revenus = async (req: Request, res: Response) => {

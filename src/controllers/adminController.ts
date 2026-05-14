@@ -128,13 +128,35 @@ export const updateCommande = async (req: Request, res: Response) => {
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 };
 
+// Assigner manuellement (avec choix du livreur)
 export const assignerCommande = async (req: Request, res: Response) => {
   try {
     const { commandeId, livreurId } = req.body;
-    if (!commandeId || !livreurId) return res.status(400).json({ error: "commandeId et livreurId requis" });
+    if (!commandeId || !livreurId)
+      return res.status(400).json({ error: "commandeId et livreurId requis" });
+
     const livraison = await service.assignerCommandeService(Number(commandeId), Number(livreurId));
     res.json({ message: "Commande assignée avec succès", livraison });
-  } catch (e: any) { res.status(400).json({ error: e.message }); }
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+};
+
+// Assigner automatiquement au plus proche
+export const assignerCommandeAuPlusProche = async (req: Request, res: Response) => {
+  try {
+    const { commandeId } = req.body;
+    if (!commandeId)
+      return res.status(400).json({ error: "commandeId requis" });
+
+    const result = await service.assignerCommandeAuPlusProche(Number(commandeId));
+    res.json({
+      message:    `Commande assignée au livreur le plus proche (${result.distanceKm} km)`,
+      ...result,
+    });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
 };
 
 // ===== LIVREURS =====

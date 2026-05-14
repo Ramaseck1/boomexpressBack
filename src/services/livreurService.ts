@@ -34,6 +34,21 @@ export const toggleDisponibiliteService = async (userId: number) => {
   });
 };
 
+export const updatePositionService = async (userId: number, lat: number, lng: number) => {
+  const livreur = await prisma.livreur.findUnique({ where: { userId } });
+  if (!livreur) throw new Error("Livreur introuvable");
+
+  return prisma.livreur.update({
+    where: { id: livreur.id },
+    data: {
+      latActuelle:      lat,   // ✅ vrai nom
+      lngActuelle:      lng,   // ✅ vrai nom
+      derniereActivite: new Date(),
+    },
+  });
+};
+
+
 export const getProfilLivreurService = async (userId: number) => {
   return prisma.user.findUnique({
     where: { id: userId },

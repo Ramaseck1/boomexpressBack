@@ -4,6 +4,7 @@ import * as controller from "../controllers/livreurController";
 import * as navController from "../controllers/navigationController"; // 🗺️ Navigation
 import { authenticate } from "../middleware/authMiddleware";
 import { authorizeLivreur } from "../middleware/authorizeLivreur";
+import * as services from "../services/livreurService";
 
 const router = Router();
 
@@ -20,6 +21,8 @@ router.get("/profil", controller.getProfil);
 // 🟢 Disponibilité
 // ──────────────────────────────────────────────
 router.put("/disponibilite", controller.toggleDisponibilite);
+
+router.patch("/position", controller.updatePosition);
 
 // ──────────────────────────────────────────────
 // 📦 Missions
@@ -69,6 +72,10 @@ router.get("/paiements/historique", controller.getHistoriquePaiements);
  router.get("/revenus/jour", controller.revenusJour);
 router.get("/paiements/historique", controller.getHistoriquePaiements); // ✅
 router.get("/commissions/historique", controller.historiqueCommissions); // ✅ manquait
+
+
+
+// livreurRouter.ts
 
 
 
