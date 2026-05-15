@@ -57,5 +57,6 @@ router.delete("/livreurs/:livreurId/documents", controller.supprimerDocument);
 router.get("/commissions/jour",                 controller.getCommissionsJour);
 router.post("/commissions/payer",               controller.payerCommissionsJour);
 router.get("/commissions/stats",                controller.getStatsCommissionsGlobales);
+router.delete("/livreurs/:id", controller.supprimerLivreurController);
 
 export default router;

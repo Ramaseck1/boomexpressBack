@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.debloquerLivreurService = exports.bloquerLivreurCommissionImpayeeService = exports.getLivreursStatutCommissionsService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.getLivreursPositionsService = exports.supprimerCommandeService = exports.annulerCommandeService = exports.assignerCommandeAuPlusProche = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
+exports.supprimerLivreurService = exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.debloquerLivreurService = exports.bloquerLivreurCommissionImpayeeService = exports.getLivreursStatutCommissionsService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.getLivreursPositionsService = exports.supprimerCommandeService = exports.annulerCommandeService = exports.assignerCommandeAuPlusProche = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const axios_1 = __importDefault(require("axios"));
 const cloudinary_1 = __importDefault(require("../config/cloudinary"));
@@ -826,3 +826,59 @@ const supprimerDocumentService = async (livreurId, type) => {
     });
 };
 exports.supprimerDocumentService = supprimerDocumentService;
+// ===== SUPPRIMER UN LIVREUR =====
+const supprimerLivreurService = async (livreurId) => {
+    const livreur = await prisma_config_1.prisma.livreur.findUnique({
+        where: { id: livreurId },
+        include: {
+            user: true,
+            livraisons: true,
+            documents: true,
+            blocages: true,
+            commissions: true,
+        },
+    });
+    if (!livreur)
+        throw new Error("Livreur introuvable");
+    await prisma_config_1.prisma.$transaction(async (tx) => {
+        // 1. Supprimer livraisons liées
+        await tx.livraison.deleteMany({
+            where: { livreurId },
+        });
+        // 2. Supprimer commissions
+        await tx.paiementCommission.deleteMany({
+            where: { livreurId },
+        });
+        // 3. Supprimer blocages
+        await tx.blocage.deleteMany({
+            where: { livreurId },
+        });
+        // 4. Supprimer documents (et Cloudinary si besoin)
+        if (livreur.documents) {
+            const doc = livreur.documents;
+            const publicIds = [
+                doc.cniRectoPublicId,
+                doc.cniVersoPublicId,
+                doc.permisPublicId,
+                doc.assurancePublicId,
+                doc.recepissePublicId,
+            ].filter(Boolean);
+            for (const id of publicIds) {
+                await cloudinary_1.default.uploader.destroy(id);
+            }
+            await tx.documentLivreur.delete({
+                where: { livreurId },
+            });
+        }
+        // 5. Supprimer user lié
+        await tx.user.delete({
+            where: { id: livreur.userId },
+        });
+        // 6. Supprimer livreur
+        await tx.livreur.delete({
+            where: { id: livreurId },
+        });
+    });
+    return { message: "Livreur supprimé avec succès" };
+};
+exports.supprimerLivreurService = supprimerLivreurService;

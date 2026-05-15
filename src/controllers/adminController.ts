@@ -395,3 +395,33 @@ export const supprimerDocument = async (req: Request, res: Response) => {
     res.status(400).json({ error: e.message });
   }
 };
+
+
+
+
+export const supprimerLivreurController = async (req: Request, res: Response) => {
+  try {
+    const livreurId = Number(req.params.id);
+
+    if (!livreurId) {
+      return res.status(400).json({
+        success: false,
+        message: "ID livreur invalide",
+      });
+    }
+
+    const result = await service.supprimerLivreurService(livreurId);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error: any) {
+    console.error("Erreur suppression livreur:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Erreur serveur lors de la suppression du livreur",
+    });
+  }
+};

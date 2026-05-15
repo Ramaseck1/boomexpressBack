@@ -983,3 +983,72 @@ export const supprimerDocumentService = async (
     data:  nullMap[type],
   });
 };
+
+
+
+
+// ===== SUPPRIMER UN LIVREUR =====
+export const supprimerLivreurService = async (livreurId: number) => {
+  const livreur = await prisma.livreur.findUnique({
+    where: { id: livreurId },
+    include: {
+      user: true,
+      livraisons: true,
+      documents: true,
+      blocages: true,
+      commissions: true,
+    },
+  });
+
+  if (!livreur) throw new Error("Livreur introuvable");
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Supprimer livraisons liées
+    await tx.livraison.deleteMany({
+      where: { livreurId },
+    });
+
+    // 2. Supprimer commissions
+    await tx.paiementCommission.deleteMany({
+      where: { livreurId },
+    });
+
+    // 3. Supprimer blocages
+    await tx.blocage.deleteMany({
+      where: { livreurId },
+    });
+
+    // 4. Supprimer documents (et Cloudinary si besoin)
+    if (livreur.documents) {
+      const doc = livreur.documents;
+
+      const publicIds = [
+        doc.cniRectoPublicId,
+        doc.cniVersoPublicId,
+        doc.permisPublicId,
+        doc.assurancePublicId,
+        doc.recepissePublicId,
+      ].filter(Boolean);
+
+      for (const id of publicIds) {
+        await cloudinary.uploader.destroy(id!);
+      }
+
+      await tx.documentLivreur.delete({
+        where: { livreurId },
+      });
+    }
+
+    // 5. Supprimer user lié
+    await tx.user.delete({
+      where: { id: livreur.userId },
+    });
+
+    // 6. Supprimer livreur
+    await tx.livreur.delete({
+      where: { id: livreurId },
+    });
+  });
+
+  return { message: "Livreur supprimé avec succès" };
+};

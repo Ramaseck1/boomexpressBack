@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.debloquerLivreur = exports.bloquerLivreurCommissionImpayee = exports.getLivreursStatutCommissions = exports.payerCommissionsJour = exports.getStatsCommissionsGlobales = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.getLivreursPositions = exports.assignerCommandeAuPlusProche = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.supprimerCommande = exports.annulerCommande = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
+exports.supprimerLivreurController = exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.debloquerLivreur = exports.bloquerLivreurCommissionImpayee = exports.getLivreursStatutCommissions = exports.payerCommissionsJour = exports.getStatsCommissionsGlobales = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.getLivreursPositions = exports.assignerCommandeAuPlusProche = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.supprimerCommande = exports.annulerCommande = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
 const service = __importStar(require("../services/adminService"));
 // ===== CLIENTS =====
 const getClients = async (req, res) => {
@@ -454,3 +454,27 @@ const supprimerDocument = async (req, res) => {
     }
 };
 exports.supprimerDocument = supprimerDocument;
+const supprimerLivreurController = async (req, res) => {
+    try {
+        const livreurId = Number(req.params.id);
+        if (!livreurId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID livreur invalide",
+            });
+        }
+        const result = await service.supprimerLivreurService(livreurId);
+        return res.status(200).json({
+            success: true,
+            message: result.message,
+        });
+    }
+    catch (error) {
+        console.error("Erreur suppression livreur:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Erreur serveur lors de la suppression du livreur",
+        });
+    }
+};
+exports.supprimerLivreurController = supprimerLivreurController;
