@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.revenusJour = exports.historiqueCommissions = exports.getHistoriquePaiements = exports.revenus = exports.historique = exports.annulerMission = exports.confirmerLivraison = exports.demarrerLivraison = exports.accepterMission = exports.getMissions = exports.toggleDisponibilite = exports.getProfil = exports.getLivreurs = void 0;
+exports.revenusJour = exports.historiqueCommissions = exports.getHistoriquePaiements = exports.revenus = exports.savePushToken = exports.updatePosition = exports.historique = exports.annulerMission = exports.confirmerLivraison = exports.demarrerLivraison = exports.accepterMission = exports.getMissions = exports.toggleDisponibilite = exports.getProfil = exports.getLivreurs = void 0;
 const service = __importStar(require("../services/livreurService"));
 // ================= ADMIN =================
 // Liste des livreurs
@@ -184,6 +184,37 @@ const historique = async (req, res) => {
     }
 };
 exports.historique = historique;
+const updatePosition = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { lat, lng } = req.body;
+        if (lat === undefined || lng === undefined)
+            return res.status(400).json({ error: "lat et lng requis" });
+        const data = await service.updatePositionService(userId, Number(lat), Number(lng));
+        res.json({ message: "Position mise à jour", data });
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+exports.updatePosition = updatePosition;
+const savePushToken = async (req, res) => {
+    try {
+        const livreurId = req.user?.livreurId;
+        const { token } = req.body;
+        if (!livreurId)
+            return res.status(401).json({ error: "Non autorisé" });
+        if (!token)
+            return res.status(400).json({ error: "token requis" });
+        await service.savePushTokenService(livreurId, token);
+        res.json({ message: "Token enregistré" });
+    }
+    catch (e) {
+        console.error("[savePushToken]", e);
+        res.status(500).json({ error: "Service indisponible" });
+    }
+};
+exports.savePushToken = savePushToken;
 // Revenus
 const revenus = async (req, res) => {
     try {

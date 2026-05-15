@@ -202,6 +202,21 @@ export const updatePosition = async (req: Request, res: Response) => {
   }
 };
 
+export const savePushToken = async (req: Request, res: Response) => {
+  try {
+    const livreurId = (req as any).user?.livreurId;
+    const { token } = req.body;
+
+    if (!livreurId) return res.status(401).json({ error: "Non autorisé" });
+    if (!token)     return res.status(400).json({ error: "token requis" });
+
+    await service.savePushTokenService(livreurId, token);
+    res.json({ message: "Token enregistré" });
+  } catch (e: any) {
+    console.error("[savePushToken]", e);
+    res.status(500).json({ error: "Service indisponible" });
+  }
+};
 
 // Revenus
 export const revenus = async (req: Request, res: Response) => {

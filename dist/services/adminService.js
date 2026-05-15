@@ -3,11 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.debloquerLivreurService = exports.bloquerLivreurCommissionImpayeeService = exports.getLivreursStatutCommissionsService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
+exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.debloquerLivreurService = exports.bloquerLivreurCommissionImpayeeService = exports.getLivreursStatutCommissionsService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.getLivreursPositionsService = exports.assignerCommandeAuPlusProche = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const axios_1 = __importDefault(require("axios"));
 const cloudinary_1 = __importDefault(require("../config/cloudinary"));
 const stream_1 = require("stream");
+const pushService_1 = require("./pushService");
 const uploadToCloudinary = (file, folder, publicId) => {
     return new Promise((resolve, reject) => {
         const uploadStream = cloudinary_1.default.uploader.upload_stream({
@@ -308,12 +309,87 @@ const assignerCommandeService = async (commandeId, livreurId) => {
     });
     if (!commande)
         throw new Error("Commande introuvable");
+    const livreur = await prisma_config_1.prisma.livreur.findUnique({
+        where: { id: livreurId },
+    });
     const livraison = await prisma_config_1.prisma.livraison.create({
         data: { commandeId, livreurId, statut: "en_attente" },
     });
+    if (livreur?.pushToken) {
+        await (0, pushService_1.envoyerPushNotification)(livreur.pushToken, "🚀 Nouvelle mission disponible !", `Une nouvelle commande vous a été assignée. Ouvrez l'app pour accepter.`, { screen: "home", commandeId });
+    }
     return livraison;
 };
 exports.assignerCommandeService = assignerCommandeService;
+const assignerCommandeAuPlusProche = async (commandeId) => {
+    const commande = await prisma_config_1.prisma.commande.findUnique({
+        where: { id: commandeId },
+        include: { client: true },
+    });
+    if (!commande)
+        throw new Error("Commande introuvable");
+    const dixMinutesAvant = new Date(Date.now() - 10 * 60 * 1000);
+    const livreurs = await prisma_config_1.prisma.livreur.findMany({
+        where: {
+            disponible: true,
+            estBloque: false,
+            profilValide: true,
+            latActuelle: { not: null }, // ✅ vrai nom
+            lngActuelle: { not: null }, // ✅ vrai nom
+            derniereActivite: { gte: dixMinutesAvant },
+            user: { statut: "actif" },
+        },
+        include: { user: true },
+    });
+    if (livreurs.length === 0)
+        throw new Error("Aucun livreur disponible avec une position récente");
+    const departCoords = await getLatLngSmart(commande.client?.adresse);
+    if (!departCoords)
+        throw new Error("Impossible de géocoder l'adresse de départ");
+    let plusProche = livreurs[0];
+    let distanceMin = Infinity;
+    for (const livreur of livreurs) {
+        const dist = getDistanceKm(departCoords.lat, departCoords.lng, livreur.latActuelle, // ✅ vrai nom
+        livreur.lngActuelle // ✅ vrai nom
+        );
+        if (dist < distanceMin) {
+            distanceMin = dist;
+            plusProche = livreur;
+        }
+    }
+    const livraison = await prisma_config_1.prisma.livraison.create({
+        data: { commandeId, livreurId: plusProche.id, statut: "en_attente" },
+    });
+    if (plusProche.pushToken) {
+        await (0, pushService_1.envoyerPushNotification)(plusProche.pushToken, "🚀 Nouvelle mission disponible !", `Une nouvelle commande vous a été assignée. Ouvrez l'app pour accepter.`, { screen: "home", commandeId });
+    }
+    return {
+        livraison,
+        livreur: plusProche,
+        distanceKm: Math.round(distanceMin * 100) / 100,
+    };
+};
+exports.assignerCommandeAuPlusProche = assignerCommandeAuPlusProche;
+// ===== POSITIONS EN TEMPS RÉEL DES LIVREURS =====
+const getLivreursPositionsService = async () => {
+    const livreurs = await prisma_config_1.prisma.livreur.findMany({
+        include: { user: true },
+    });
+    return livreurs.map((l) => ({
+        id: l.id,
+        nom: l.user.nom,
+        prenom: l.user.prenom,
+        telephone: l.user.telephone,
+        disponible: l.disponible,
+        estBloque: l.estBloque,
+        profilValide: l.profilValide,
+        statut: l.user.statut,
+        lat: l.latActuelle,
+        lng: l.lngActuelle,
+        derniereActivite: l.derniereActivite,
+    }));
+};
+exports.getLivreursPositionsService = getLivreursPositionsService;
 // ===== LIVREURS =====
 const getLivreursService = async () => prisma_config_1.prisma.livreur.findMany({ include: { user: true } });
 exports.getLivreursService = getLivreursService;

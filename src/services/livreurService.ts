@@ -48,6 +48,12 @@ export const updatePositionService = async (userId: number, lat: number, lng: nu
   });
 };
 
+export const savePushTokenService = async (livreurId: number, token: string) => {
+  return prisma.livreur.update({
+    where: { id: livreurId },
+    data:  { pushToken: token },
+  });
+};
 
 export const getProfilLivreurService = async (userId: number) => {
   return prisma.user.findUnique({

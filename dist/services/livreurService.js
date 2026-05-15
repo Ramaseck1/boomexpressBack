@@ -2,7 +2,7 @@
 // services/livreurService.ts
 // 🚗 Service livreur — missions, navigation, revenus, commissions
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.revenusJourService = exports.revenusService = exports.getHistoriquePaiementsService = exports.historiqueService = exports.confirmerLivraisonService = exports.annulerMissionService = exports.demarrerLivraisonService = exports.accepterMissionService = exports.getMissionsService = exports.getProfilLivreurService = exports.toggleDisponibiliteService = exports.getLivreursService = void 0;
+exports.revenusJourService = exports.revenusService = exports.getHistoriquePaiementsService = exports.historiqueService = exports.confirmerLivraisonService = exports.annulerMissionService = exports.demarrerLivraisonService = exports.accepterMissionService = exports.getMissionsService = exports.getProfilLivreurService = exports.savePushTokenService = exports.updatePositionService = exports.toggleDisponibiliteService = exports.getLivreursService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const navigationService_1 = require("./MapboxNavigation/navigationService");
 // ─── Livreurs ────────────────────────────────────────────────────────────────
@@ -29,6 +29,27 @@ const toggleDisponibiliteService = async (userId) => {
     });
 };
 exports.toggleDisponibiliteService = toggleDisponibiliteService;
+const updatePositionService = async (userId, lat, lng) => {
+    const livreur = await prisma_config_1.prisma.livreur.findUnique({ where: { userId } });
+    if (!livreur)
+        throw new Error("Livreur introuvable");
+    return prisma_config_1.prisma.livreur.update({
+        where: { id: livreur.id },
+        data: {
+            latActuelle: lat, // ✅ vrai nom
+            lngActuelle: lng, // ✅ vrai nom
+            derniereActivite: new Date(),
+        },
+    });
+};
+exports.updatePositionService = updatePositionService;
+const savePushTokenService = async (livreurId, token) => {
+    return prisma_config_1.prisma.livreur.update({
+        where: { id: livreurId },
+        data: { pushToken: token },
+    });
+};
+exports.savePushTokenService = savePushTokenService;
 const getProfilLivreurService = async (userId) => {
     return prisma_config_1.prisma.user.findUnique({
         where: { id: userId },

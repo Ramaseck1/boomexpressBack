@@ -3,6 +3,8 @@ import axios from "axios";
 
 import cloudinary from "../config/cloudinary";
 import { Readable } from "stream";
+import { envoyerPushNotification } from "./pushService";
+
 
 
 
@@ -371,9 +373,22 @@ export const assignerCommandeService = async (commandeId: number, livreurId: num
   });
   if (!commande) throw new Error("Commande introuvable");
 
-  const livraison = await prisma.livraison.create({
-    data: { commandeId, livreurId, statut: "en_attente" },
-  });
+const livreur = await prisma.livreur.findUnique({
+  where: { id: livreurId },
+});
+
+const livraison = await prisma.livraison.create({
+  data: { commandeId, livreurId, statut: "en_attente" },
+});
+
+if (livreur?.pushToken) {
+  await envoyerPushNotification(
+    livreur.pushToken,
+    "🚀 Nouvelle mission disponible !",
+    `Une nouvelle commande vous a été assignée. Ouvrez l'app pour accepter.`,
+    { screen: "home", commandeId }
+  );
+}
 
   return livraison;
 };
@@ -420,10 +435,18 @@ export const assignerCommandeAuPlusProche = async (commandeId: number) => {
     }
   }
 
-  const livraison = await prisma.livraison.create({
-    data: { commandeId, livreurId: plusProche.id, statut: "en_attente" },
-  });
+const livraison = await prisma.livraison.create({
+  data: { commandeId, livreurId: plusProche.id, statut: "en_attente" },
+});
 
+if (plusProche.pushToken) {
+  await envoyerPushNotification(
+    plusProche.pushToken,
+    "🚀 Nouvelle mission disponible !",
+    `Une nouvelle commande vous a été assignée. Ouvrez l'app pour accepter.`,
+    { screen: "home", commandeId }
+  );
+}
   return {
     livraison,
     livreur:    plusProche,

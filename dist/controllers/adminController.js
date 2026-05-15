@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.debloquerLivreur = exports.bloquerLivreurCommissionImpayee = exports.getLivreursStatutCommissions = exports.payerCommissionsJour = exports.getStatsCommissionsGlobales = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
+exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.debloquerLivreur = exports.bloquerLivreurCommissionImpayee = exports.getLivreursStatutCommissions = exports.payerCommissionsJour = exports.getStatsCommissionsGlobales = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.getLivreursPositions = exports.assignerCommandeAuPlusProche = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
 const service = __importStar(require("../services/adminService"));
 // ===== CLIENTS =====
 const getClients = async (req, res) => {
@@ -172,6 +172,7 @@ const updateCommande = async (req, res) => {
     }
 };
 exports.updateCommande = updateCommande;
+// Assigner manuellement (avec choix du livreur)
 const assignerCommande = async (req, res) => {
     try {
         const { commandeId, livreurId } = req.body;
@@ -185,6 +186,33 @@ const assignerCommande = async (req, res) => {
     }
 };
 exports.assignerCommande = assignerCommande;
+// Assigner automatiquement au plus proche
+const assignerCommandeAuPlusProche = async (req, res) => {
+    try {
+        const { commandeId } = req.body;
+        if (!commandeId)
+            return res.status(400).json({ error: "commandeId requis" });
+        const result = await service.assignerCommandeAuPlusProche(Number(commandeId));
+        res.json({
+            message: `Commande assignée au livreur le plus proche (${result.distanceKm} km)`,
+            ...result,
+        });
+    }
+    catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+};
+exports.assignerCommandeAuPlusProche = assignerCommandeAuPlusProche;
+const getLivreursPositions = async (req, res) => {
+    try {
+        res.json(await service.getLivreursPositionsService());
+    }
+    catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Service indisponible" });
+    }
+};
+exports.getLivreursPositions = getLivreursPositions;
 // ===== LIVREURS =====
 const getLivreurs = async (req, res) => {
     try {

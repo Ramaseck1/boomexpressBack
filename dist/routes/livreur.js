@@ -51,6 +51,8 @@ router.get("/profil", controller.getProfil);
 // 🟢 Disponibilité
 // ──────────────────────────────────────────────
 router.put("/disponibilite", controller.toggleDisponibilite);
+router.patch("/position", controller.updatePosition);
+router.post("/push-token", controller.savePushToken); // ← corrigé
 // ──────────────────────────────────────────────
 // 📦 Missions
 // ──────────────────────────────────────────────
@@ -91,6 +93,7 @@ router.get("/paiements/historique", controller.getHistoriquePaiements);
 router.get("/revenus/jour", controller.revenusJour);
 router.get("/paiements/historique", controller.getHistoriquePaiements); // ✅
 router.get("/commissions/historique", controller.historiqueCommissions); // ✅ manquait
+// livreurRouter.ts
 // ──────────────────────────────────────────────
 // 🔐 Admin
 // ──────────────────────────────────────────────

@@ -23,6 +23,8 @@ router.get("/profil", controller.getProfil);
 router.put("/disponibilite", controller.toggleDisponibilite);
 
 router.patch("/position", controller.updatePosition);
+router.post("/push-token",    controller.savePushToken);       // ← corrigé
+
 
 // ──────────────────────────────────────────────
 // 📦 Missions
