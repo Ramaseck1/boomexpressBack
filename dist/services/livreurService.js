@@ -66,10 +66,18 @@ const getMissionsService = async (userId) => {
         where: {
             livreurId: livreur.id,
             statut: { in: ["en_attente", "en_cours", "livree"] },
+            commande: {
+                deletedAt: null, // 👈 IMPORTANT
+                statut: { not: "supprimé" } // 👈 double sécurité
+            },
         },
         distinct: ["commandeId"],
         include: {
-            commande: { include: { client: true } },
+            commande: {
+                include: {
+                    client: true,
+                },
+            },
         },
         orderBy: { id: "desc" },
     });
