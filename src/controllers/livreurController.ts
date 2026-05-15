@@ -189,7 +189,7 @@ export const historique = async (req: Request, res: Response) => {
 
 export const updatePosition = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId;
+   const userId = (req as any).user?.id;
     const { lat, lng } = req.body;
 
     if (lat === undefined || lng === undefined)

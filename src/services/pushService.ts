@@ -9,17 +9,16 @@ export const envoyerPushNotification = async (
   if (!pushToken || !pushToken.startsWith("ExponentPushToken")) return;
 
   try {
-    await axios.post("https://exp.host/--/api/v2/push/send", {
-      to:       pushToken,
-      title:    titre,
-      body:     corps,
-      sound:    "default",
-      priority: "high",
-      data:     data ?? {},
-      badge:    1,
-    }, {
-      headers: { "Content-Type": "application/json" },
-    });
+  await axios.post("https://exp.host/--/api/v2/push/send", {
+  to:        pushToken,
+  title:     titre,
+  body:      corps,
+  sound:     "default",
+  priority:  "high",
+  channelId: "nouvelles-missions-v2",  // ← manquait
+  data:      data ?? {},
+  badge:     1,
+});  
     console.log("✅ Push envoyé à:", pushToken);
   } catch (e: any) {
     console.error("❌ Push failed:", e.message);

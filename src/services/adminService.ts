@@ -354,13 +354,21 @@ export const getCommandesService = async (query: any) => {
   if (dateDebut) filter.createdAt.gte = new Date(dateDebut);
   if (dateFin)   filter.createdAt.lte = new Date(dateFin);
 
-  return prisma.commande.findMany({
-    where: filter,
-    include: {
-      client: true,
-      livraisons: { include: { livreur: true } },
+ return prisma.commande.findMany({
+  where: filter,
+  include: {
+    client: true,
+    livraisons: {
+      include: {
+        livreur: {
+          include: {
+            user: true, // 🔥 IMPORTANT
+          },
+        },
+      },
     },
-  });
+  },
+});
 };
 
 export const updateCommandeService = async (commandeId: number, data: any) =>
