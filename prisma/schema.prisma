@@ -62,7 +62,7 @@ model Commande {
   commissionPaye Boolean  @default(false)
   createdAt      DateTime @default(now())
   statut         String   @default("en_attente")
-  deletedAt    DateTime @default(now())
+  deletedAt DateTime?
 
   livraisons Livraison[] @relation("CommandeLivraison")
 }

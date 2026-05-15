@@ -405,11 +405,16 @@ const annulerCommandeService = async (commandeId) => {
 exports.annulerCommandeService = annulerCommandeService;
 // admin.service.ts
 const supprimerCommandeService = async (commandeId) => {
+    const commande = await prisma_config_1.prisma.commande.findUnique({
+        where: { id: commandeId },
+    });
+    if (!commande)
+        throw new Error("Commande introuvable");
     return prisma_config_1.prisma.commande.update({
         where: { id: commandeId },
         data: {
-            statut: "supprimé", // ou "annulé_admin"
-            deletedAt: new Date(), // si tu as ce champ
+            statut: "supprimé",
+            deletedAt: new Date(),
         },
     });
 };
