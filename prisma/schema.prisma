@@ -80,7 +80,7 @@ model Livreur {
   estVerifie       Boolean   @default(false)
   pushToken String?
 
-  user        User                 @relation(fields: [userId], references: [id])
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
   livraisons  Livraison[]
   commissions PaiementCommission[]
   blocages    Blocage[]

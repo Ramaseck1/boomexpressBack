@@ -828,6 +828,7 @@ const supprimerDocumentService = async (livreurId, type) => {
 exports.supprimerDocumentService = supprimerDocumentService;
 // ===== SUPPRIMER UN LIVREUR =====
 const supprimerLivreurService = async (livreurId) => {
+    // 1. Récupérer le livreur avec ses relations
     const livreur = await prisma_config_1.prisma.livreur.findUnique({
         where: { id: livreurId },
         include: {
@@ -838,22 +839,23 @@ const supprimerLivreurService = async (livreurId) => {
             commissions: true,
         },
     });
-    if (!livreur)
+    if (!livreur) {
         throw new Error("Livreur introuvable");
+    }
     await prisma_config_1.prisma.$transaction(async (tx) => {
-        // 1. Supprimer livraisons liées
+        // 2. Supprimer les livraisons liées
         await tx.livraison.deleteMany({
             where: { livreurId },
         });
-        // 2. Supprimer commissions
+        // 3. Supprimer les commissions
         await tx.paiementCommission.deleteMany({
             where: { livreurId },
         });
-        // 3. Supprimer blocages
+        // 4. Supprimer les blocages
         await tx.blocage.deleteMany({
             where: { livreurId },
         });
-        // 4. Supprimer documents (et Cloudinary si besoin)
+        // 5. Supprimer les documents + Cloudinary
         if (livreur.documents) {
             const doc = livreur.documents;
             const publicIds = [
@@ -870,15 +872,18 @@ const supprimerLivreurService = async (livreurId) => {
                 where: { livreurId },
             });
         }
-        // 5. Supprimer user lié
-        await tx.user.delete({
-            where: { id: livreur.userId },
-        });
-        // 6. Supprimer livreur
+        // 6. ⚠️ IMPORTANT : supprimer d'abord le LIVREUR
         await tx.livreur.delete({
             where: { id: livreurId },
         });
+        // 7. ensuite supprimer le USER lié
+        await tx.user.delete({
+            where: { id: livreur.userId },
+        });
     });
-    return { message: "Livreur supprimé avec succès" };
+    return {
+        success: true,
+        message: "Livreur supprimé avec succès",
+    };
 };
 exports.supprimerLivreurService = supprimerLivreurService;
