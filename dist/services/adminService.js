@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.debloquerLivreurService = exports.bloquerLivreurCommissionImpayeeService = exports.getLivreursStatutCommissionsService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.getLivreursPositionsService = exports.annulerCommandeService = exports.assignerCommandeAuPlusProche = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
+exports.supprimerDocumentService = exports.getDocumentsLivreurService = exports.validerProfilLivreurService = exports.uploadDocumentsLivreurService = exports.debloquerLivreurService = exports.bloquerLivreurCommissionImpayeeService = exports.getLivreursStatutCommissionsService = exports.getStatsCommissionsGlobalesService = exports.getCommissionsJourAdminService = exports.bloquerLivreurService = exports.marquerPaiementJourService = exports.marquerPaiementLivreurByLivreurService = exports.toggleCompteLivreurService = exports.getProfilLivreurService = exports.getLivreursService = exports.getLivreursPositionsService = exports.supprimerCommandeService = exports.annulerCommandeService = exports.assignerCommandeAuPlusProche = exports.assignerCommandeService = exports.updateCommandeService = exports.getCommandesService = exports.createCommandeService = exports.deleteCommandeService = exports.createClientEtCommandeService = exports.deleteClientService = exports.getClientByIdService = exports.getClientHistoriqueService = exports.updateClientService = exports.getClientsService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const axios_1 = __importDefault(require("axios"));
 const cloudinary_1 = __importDefault(require("../config/cloudinary"));
@@ -398,6 +398,17 @@ const annulerCommandeService = async (commandeId) => {
     return { message: "Commande annulée avec succès" };
 };
 exports.annulerCommandeService = annulerCommandeService;
+// admin.service.ts
+const supprimerCommandeService = async (commandeId) => {
+    return prisma_config_1.prisma.commande.update({
+        where: { id: commandeId },
+        data: {
+            statut: "supprimé", // ou "annulé_admin"
+            deletedAt: new Date(), // si tu as ce champ
+        },
+    });
+};
+exports.supprimerCommandeService = supprimerCommandeService;
 // ===== POSITIONS EN TEMPS RÉEL DES LIVREURS =====
 const getLivreursPositionsService = async () => {
     const livreurs = await prisma_config_1.prisma.livreur.findMany({

@@ -15,6 +15,7 @@ router.put("/clients/:clientId",                controller.updateClient);
 router.delete("/clients/:clientId",             controller.deleteClient);
 router.get("/clients/:clientId/historique",     controller.getClientHistorique);
 router.post("/clients-commandes",               controller.createClientEtCommande);
+router.post("/commandes/supprimer", controller.supprimerCommande);
 
 // Commandes
 router.get("/commandes",                        controller.getCommandes);

@@ -485,6 +485,17 @@ export const annulerCommandeService = async (commandeId: number) => {
   return { message: "Commande annulée avec succès" };
 };
 
+// admin.service.ts
+
+export const supprimerCommandeService = async (commandeId: number) => {
+  return prisma.commande.update({
+    where: { id: commandeId },
+    data: {
+      statut: "supprimé", // ou "annulé_admin"
+      deletedAt: new Date(), // si tu as ce champ
+    },
+  });
+};
 
 // ===== POSITIONS EN TEMPS RÉEL DES LIVREURS =====
 export const getLivreursPositionsService = async () => {

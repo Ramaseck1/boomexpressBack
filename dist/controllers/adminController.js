@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.debloquerLivreur = exports.bloquerLivreurCommissionImpayee = exports.getLivreursStatutCommissions = exports.payerCommissionsJour = exports.getStatsCommissionsGlobales = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.getLivreursPositions = exports.assignerCommandeAuPlusProche = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.annulerCommande = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
+exports.supprimerDocument = exports.getDocumentsLivreur = exports.validerProfilLivreur = exports.uploadDocumentsLivreur = exports.debloquerLivreur = exports.bloquerLivreurCommissionImpayee = exports.getLivreursStatutCommissions = exports.payerCommissionsJour = exports.getStatsCommissionsGlobales = exports.getCommissionsJour = exports.bloquerLivreur = exports.marquerPaiementJour = exports.marquerPaiementLivreur = exports.toggleCompteLivreur = exports.getProfilLivreur = exports.getLivreurs = exports.getLivreursPositions = exports.assignerCommandeAuPlusProche = exports.assignerCommande = exports.updateCommande = exports.createCommande = exports.deleteCommande = exports.createClientEtCommande = exports.deleteClient = exports.supprimerCommande = exports.annulerCommande = exports.getCommandes = exports.getClientHistorique = exports.updateClient = exports.getClients = void 0;
 const service = __importStar(require("../services/adminService"));
 // ===== CLIENTS =====
 const getClients = async (req, res) => {
@@ -94,6 +94,26 @@ const annulerCommande = async (req, res) => {
     }
 };
 exports.annulerCommande = annulerCommande;
+const supprimerCommande = async (req, res) => {
+    try {
+        const { commandeId } = req.body;
+        if (!commandeId) {
+            return res.status(400).json({ error: "commandeId requis" });
+        }
+        const result = await service.supprimerCommandeService(Number(commandeId));
+        return res.json({
+            message: "Commande supprimée avec succès",
+            data: result,
+        });
+    }
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            error: "Erreur lors de la suppression de la commande",
+        });
+    }
+};
+exports.supprimerCommande = supprimerCommande;
 const deleteClient = async (req, res) => {
     try {
         const { clientId } = req.params;

@@ -51,6 +51,27 @@ export const annulerCommande = async (req: Request, res: Response) => {
   }
 };
 
+export const supprimerCommande = async (req: Request, res: Response) => {
+  try {
+    const { commandeId } = req.body;
+
+    if (!commandeId) {
+      return res.status(400).json({ error: "commandeId requis" });
+    }
+
+    const result = await service.supprimerCommandeService(Number(commandeId));
+
+    return res.json({
+      message: "Commande supprimée avec succès",
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      error: "Erreur lors de la suppression de la commande",
+    });
+  }
+};
 export const deleteClient = async (req: Request, res: Response) => {
   try {
     const { clientId } = req.params;
