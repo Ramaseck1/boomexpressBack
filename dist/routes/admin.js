@@ -49,6 +49,7 @@ router.get("/clients/:clientId/historique", controller.getClientHistorique);
 router.post("/clients-commandes", controller.createClientEtCommande);
 // Commandes
 router.get("/commandes", controller.getCommandes);
+router.get("/commandes/annuler", controller.annulerCommande);
 router.post("/commandes", controller.createCommande);
 router.put("/commandes/:commandeId", controller.updateCommande);
 router.delete("/commandes/:commandeId", controller.deleteCommande);

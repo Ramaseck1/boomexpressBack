@@ -462,6 +462,29 @@ if (plusProche.pushToken) {
   };
 };
 
+export const annulerCommandeService = async (commandeId: number) => {
+  const commande = await prisma.commande.findUnique({
+    where: { id: commandeId },
+    include: { livraisons: true },
+  });
+
+  if (!commande) throw new Error("Commande introuvable");
+
+  // annuler commande
+  await prisma.commande.update({
+    where: { id: commandeId },
+    data: { statut: "annulee" },
+  });
+
+  // annuler toutes les livraisons liées
+  await prisma.livraison.updateMany({
+    where: { commandeId },
+    data: { statut: "annulee" },
+  });
+
+  return { message: "Commande annulée avec succès" };
+};
+
 
 // ===== POSITIONS EN TEMPS RÉEL DES LIVREURS =====
 export const getLivreursPositionsService = async () => {

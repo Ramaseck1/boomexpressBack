@@ -36,6 +36,20 @@ catch (e: any) {
   res.status(400).json({ error: e.message });
 }};
 
+export const annulerCommande = async (req: Request, res: Response) => {
+  try {
+    const { commandeId } = req.body;
+
+    if (!commandeId)
+      return res.status(400).json({ error: "commandeId requis" });
+
+    const result = await service.annulerCommandeService(Number(commandeId));
+    res.json(result);
+
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+};
 
 export const deleteClient = async (req: Request, res: Response) => {
   try {
