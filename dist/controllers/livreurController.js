@@ -186,7 +186,7 @@ const historique = async (req, res) => {
 exports.historique = historique;
 const updatePosition = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user?.id;
         const { lat, lng } = req.body;
         if (lat === undefined || lng === undefined)
             return res.status(400).json({ error: "lat et lng requis" });

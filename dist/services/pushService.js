@@ -15,10 +15,9 @@ const envoyerPushNotification = async (pushToken, titre, corps, data) => {
             body: corps,
             sound: "default",
             priority: "high",
+            channelId: "nouvelles-missions-v2", // ← manquait
             data: data ?? {},
             badge: 1,
-        }, {
-            headers: { "Content-Type": "application/json" },
         });
         console.log("✅ Push envoyé à:", pushToken);
     }

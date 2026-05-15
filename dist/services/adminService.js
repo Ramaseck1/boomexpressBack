@@ -295,7 +295,15 @@ const getCommandesService = async (query) => {
         where: filter,
         include: {
             client: true,
-            livraisons: { include: { livreur: true } },
+            livraisons: {
+                include: {
+                    livreur: {
+                        include: {
+                            user: true, // 🔥 IMPORTANT
+                        },
+                    },
+                },
+            },
         },
     });
 };
