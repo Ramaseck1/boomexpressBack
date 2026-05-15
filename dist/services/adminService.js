@@ -334,6 +334,7 @@ const assignerCommandeService = async (commandeId, livreurId) => {
     return livraison;
 };
 exports.assignerCommandeService = assignerCommandeService;
+// ✅ Après — filtre assoupli à 2h + fallback sans filtre temporel
 const assignerCommandeAuPlusProche = async (commandeId) => {
     const commande = await prisma_config_1.prisma.commande.findUnique({
         where: { id: commandeId },
@@ -341,30 +342,43 @@ const assignerCommandeAuPlusProche = async (commandeId) => {
     });
     if (!commande)
         throw new Error("Commande introuvable");
-    const dixMinutesAvant = new Date(Date.now() - 10 * 60 * 1000);
-    const livreurs = await prisma_config_1.prisma.livreur.findMany({
+    const deuxHeuresAvant = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    // Tentative 1 : position récente (2h)
+    let livreurs = await prisma_config_1.prisma.livreur.findMany({
         where: {
             disponible: true,
             estBloque: false,
             profilValide: true,
-            latActuelle: { not: null }, // ✅ vrai nom
-            lngActuelle: { not: null }, // ✅ vrai nom
-            derniereActivite: { gte: dixMinutesAvant },
+            latActuelle: { not: null },
+            lngActuelle: { not: null },
+            derniereActivite: { gte: deuxHeuresAvant },
             user: { statut: "actif" },
         },
         include: { user: true },
     });
+    // Tentative 2 (fallback) : n'importe quelle position connue
+    if (livreurs.length === 0) {
+        livreurs = await prisma_config_1.prisma.livreur.findMany({
+            where: {
+                disponible: true,
+                estBloque: false,
+                profilValide: true,
+                latActuelle: { not: null },
+                lngActuelle: { not: null },
+                user: { statut: "actif" },
+            },
+            include: { user: true },
+        });
+    }
     if (livreurs.length === 0)
-        throw new Error("Aucun livreur disponible avec une position récente");
+        throw new Error("Aucun livreur disponible avec une position connue");
     const departCoords = await getLatLngSmart(commande.client?.adresse);
     if (!departCoords)
         throw new Error("Impossible de géocoder l'adresse de départ");
     let plusProche = livreurs[0];
     let distanceMin = Infinity;
     for (const livreur of livreurs) {
-        const dist = getDistanceKm(departCoords.lat, departCoords.lng, livreur.latActuelle, // ✅ vrai nom
-        livreur.lngActuelle // ✅ vrai nom
-        );
+        const dist = getDistanceKm(departCoords.lat, departCoords.lng, livreur.latActuelle, livreur.lngActuelle);
         if (dist < distanceMin) {
             distanceMin = dist;
             plusProche = livreur;
@@ -374,7 +388,7 @@ const assignerCommandeAuPlusProche = async (commandeId) => {
         data: { commandeId, livreurId: plusProche.id, statut: "en_attente" },
     });
     if (plusProche.pushToken) {
-        await (0, pushService_1.envoyerPushNotification)(plusProche.pushToken, "🚀 Nouvelle mission disponible !", `Une nouvelle commande vous a été assignée. Ouvrez l'app pour accepter.`, { screen: "home", commandeId });
+        await (0, pushService_1.envoyerPushNotification)(plusProche.pushToken, "🚀 Nouvelle mission disponible !", `Une nouvelle commande vous a été assignée.`, { screen: "home", commandeId });
     }
     return {
         livraison,
@@ -420,22 +434,51 @@ const supprimerCommandeService = async (commandeId) => {
 };
 exports.supprimerCommandeService = supprimerCommandeService;
 // ===== POSITIONS EN TEMPS RÉEL DES LIVREURS =====
+// admin.service.ts
+// Réutilise votre fonction existante mais en sens inverse (lat/lng → adresse)
+async function reverseGeocodeNominatim(lat, lng) {
+    try {
+        const res = await axios_1.default.get("https://nominatim.openstreetmap.org/reverse", {
+            params: {
+                lat,
+                lon: lng,
+                format: "json",
+                "accept-language": "fr",
+            },
+            headers: {
+                "User-Agent": "BoomExpressApp/1.0 (seckrama098@gmail.com)",
+            },
+        });
+        return res.data?.display_name ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+    catch {
+        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+}
 const getLivreursPositionsService = async () => {
     const livreurs = await prisma_config_1.prisma.livreur.findMany({
         include: { user: true },
     });
-    return livreurs.map((l) => ({
-        id: l.id,
-        nom: l.user.nom,
-        prenom: l.user.prenom,
-        telephone: l.user.telephone,
-        disponible: l.disponible,
-        estBloque: l.estBloque,
-        profilValide: l.profilValide,
-        statut: l.user.statut,
-        lat: l.latActuelle,
-        lng: l.lngActuelle,
-        derniereActivite: l.derniereActivite,
+    // Reverse geocoding en parallèle pour tous les livreurs avec position
+    return Promise.all(livreurs.map(async (l) => {
+        let localisationNom = null;
+        if (l.latActuelle && l.lngActuelle) {
+            localisationNom = await reverseGeocodeNominatim(l.latActuelle, l.lngActuelle);
+        }
+        return {
+            id: l.id,
+            nom: l.user.nom,
+            prenom: l.user.prenom,
+            telephone: l.user.telephone,
+            disponible: l.disponible,
+            estBloque: l.estBloque,
+            profilValide: l.profilValide,
+            statut: l.user.statut,
+            lat: l.latActuelle,
+            lng: l.lngActuelle,
+            derniereActivite: l.derniereActivite,
+            localisationNom, // ← champ ajouté
+        };
     }));
 };
 exports.getLivreursPositionsService = getLivreursPositionsService;
