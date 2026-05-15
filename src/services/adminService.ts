@@ -347,28 +347,35 @@ export const createCommandeService = async (data: any) => {
 // ===== LISTER LES COMMANDES =====
 export const getCommandesService = async (query: any) => {
   const { statut, dateDebut, dateFin } = query;
-  const filter: any = {};
+
+  const filter: any = {
+    deletedAt: null, // 👈 IMPORTANT : cache les supprimées
+  };
 
   if (statut) filter.statut = statut;
+
   if (dateDebut || dateFin) filter.createdAt = {};
   if (dateDebut) filter.createdAt.gte = new Date(dateDebut);
-  if (dateFin)   filter.createdAt.lte = new Date(dateFin);
+  if (dateFin) filter.createdAt.lte = new Date(dateFin);
 
- return prisma.commande.findMany({
-  where: filter,
-  include: {
-    client: true,
-    livraisons: {
-      include: {
-        livreur: {
-          include: {
-            user: true, // 🔥 IMPORTANT
+  return prisma.commande.findMany({
+    where: filter,
+    include: {
+      client: true,
+      livraisons: {
+        include: {
+          livreur: {
+            include: {
+              user: true, // ✔ OK
+            },
           },
         },
       },
     },
-  },
-});
+    orderBy: {
+      createdAt: "desc", // bonus utile
+    },
+  });
 };
 
 export const updateCommandeService = async (commandeId: number, data: any) =>

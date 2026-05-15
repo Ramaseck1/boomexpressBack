@@ -282,7 +282,9 @@ exports.createCommandeService = createCommandeService;
 // ===== LISTER LES COMMANDES =====
 const getCommandesService = async (query) => {
     const { statut, dateDebut, dateFin } = query;
-    const filter = {};
+    const filter = {
+        deletedAt: null, // 👈 IMPORTANT : cache les supprimées
+    };
     if (statut)
         filter.statut = statut;
     if (dateDebut || dateFin)
@@ -299,11 +301,14 @@ const getCommandesService = async (query) => {
                 include: {
                     livreur: {
                         include: {
-                            user: true, // 🔥 IMPORTANT
+                            user: true, // ✔ OK
                         },
                     },
                 },
             },
+        },
+        orderBy: {
+            createdAt: "desc", // bonus utile
         },
     });
 };
