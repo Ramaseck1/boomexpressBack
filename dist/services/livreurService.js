@@ -12,11 +12,15 @@ const getLivreursService = async () => {
     });
 };
 exports.getLivreursService = getLivreursService;
+// APRÈS
 const toggleDisponibiliteService = async (userId) => {
     const livreur = await prisma_config_1.prisma.livreur.findUnique({ where: { userId } });
     if (!livreur)
         throw new Error("Livreur introuvable");
-    // ✅ Bloquer si profil non validé
+    // ← AJOUT : vérification blocage en priorité
+    if (livreur.estBloque) {
+        throw new Error("COMPTE_BLOQUE");
+    }
     if (!livreur.profilValide) {
         throw new Error("Votre profil n'est pas encore validé par l'admin");
     }
