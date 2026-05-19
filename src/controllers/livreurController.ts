@@ -1,6 +1,12 @@
 import type { Request, Response } from "express";
 import * as service from "../services/livreurService";
 
+ import {
+  genererAudioNavigation,
+  genererInstructionVocale,
+  type VoixFR,
+} from "../services/ttsService";
+
 // ================= ADMIN =================
 
 // Liste des livreurs
@@ -13,6 +19,29 @@ export const getLivreurs = async (req: Request, res: Response) => {
   }
 };
 
+
+export const genererTTS = async (req: Request, res: Response) => {
+  try {
+    const { texte, distanceMetres, voix } = req.body;
+ 
+    if (!texte || typeof texte !== "string" || !texte.trim()) {
+      return res.status(400).json({ error: "texte requis (string non vide)" });
+    }
+ 
+    // Si distanceMetres fourni → formater l'instruction vocale complète
+    // Sinon → synthétiser le texte brut
+    const result =
+      distanceMetres !== undefined
+        ? await genererInstructionVocale(texte, Number(distanceMetres), voix as VoixFR)
+        : await genererAudioNavigation({ texte }, voix as VoixFR);
+ 
+    return res.status(200).json(result);
+ 
+  } catch (err: any) {
+    console.error("❌ TTS controller:", err.message);
+    return res.status(500).json({ error: err.message ?? "Erreur TTS" });
+  }
+};
 // ================= LIVREUR =================
 
 // Profil

@@ -24,6 +24,8 @@ router.put("/disponibilite", controller.toggleDisponibilite);
 
 router.patch("/position", controller.updatePosition);
 router.post("/push-token",    controller.savePushToken);       // ← corrigé
+router.post("/navigation/tts", controller.genererTTS);
+
 
 
 // ──────────────────────────────────────────────

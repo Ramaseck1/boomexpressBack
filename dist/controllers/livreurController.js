@@ -33,8 +33,9 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.revenusJour = exports.historiqueCommissions = exports.getHistoriquePaiements = exports.revenus = exports.savePushToken = exports.updatePosition = exports.historique = exports.annulerMission = exports.confirmerLivraison = exports.demarrerLivraison = exports.accepterMission = exports.getMissions = exports.toggleDisponibilite = exports.getProfil = exports.getLivreurs = void 0;
+exports.revenusJour = exports.historiqueCommissions = exports.getHistoriquePaiements = exports.revenus = exports.savePushToken = exports.updatePosition = exports.historique = exports.annulerMission = exports.confirmerLivraison = exports.demarrerLivraison = exports.accepterMission = exports.getMissions = exports.toggleDisponibilite = exports.getProfil = exports.genererTTS = exports.getLivreurs = void 0;
 const service = __importStar(require("../services/livreurService"));
+const ttsService_1 = require("../services/ttsService");
 // ================= ADMIN =================
 // Liste des livreurs
 const getLivreurs = async (req, res) => {
@@ -47,6 +48,25 @@ const getLivreurs = async (req, res) => {
     }
 };
 exports.getLivreurs = getLivreurs;
+const genererTTS = async (req, res) => {
+    try {
+        const { texte, distanceMetres, voix } = req.body;
+        if (!texte || typeof texte !== "string" || !texte.trim()) {
+            return res.status(400).json({ error: "texte requis (string non vide)" });
+        }
+        // Si distanceMetres fourni → formater l'instruction vocale complète
+        // Sinon → synthétiser le texte brut
+        const result = distanceMetres !== undefined
+            ? await (0, ttsService_1.genererInstructionVocale)(texte, Number(distanceMetres), voix)
+            : await (0, ttsService_1.genererAudioNavigation)({ texte }, voix);
+        return res.status(200).json(result);
+    }
+    catch (err) {
+        console.error("❌ TTS controller:", err.message);
+        return res.status(500).json({ error: err.message ?? "Erreur TTS" });
+    }
+};
+exports.genererTTS = genererTTS;
 // ================= LIVREUR =================
 // Profil
 const getProfil = async (req, res) => {
