@@ -8,6 +8,7 @@ const express_1 = require("express");
 const livreur_1 = __importDefault(require("./livreur"));
 const auth_1 = __importDefault(require("./auth"));
 const admin_1 = __importDefault(require("./admin"));
+const client_1 = __importDefault(require("./client"));
 /* import commandesRoutes from "./commandes.routes.js";
 import clientsRoutes from "./clients.routes.js"; */
 /* import paiementsRoutes from "./paiements.routes";
@@ -18,6 +19,7 @@ const router = (0, express_1.Router)();
 router.use("/auth", auth_1.default);
 router.use("/livreur", livreur_1.default);
 router.use("/admin", admin_1.default);
+router.use("/client", client_1.default);
 /* router.use("/commandes", commandesRoutes);
 router.use("/clients", clientsRoutes); */
 /* router.use("/paiements", paiementsRoutes);

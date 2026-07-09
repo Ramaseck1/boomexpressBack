@@ -15,13 +15,13 @@ import {
   annulerCommandeClient,
 } from "../controllers/clientController";
 import { authenticate } from "../middleware/authMiddleware"; // middleware existant, réutilisé tel quel
-import { authLimiter, commandeLimiter } from "../middleware/security";
-
+/* import { authLimiter, commandeLimiter } from "../middleware/security";
+ */
 const router = Router();
 
 // 🔐 AUTH (email optionnel à l'inscription)
-router.post("/register", authLimiter, registerClient);
-router.post("/login", authLimiter, loginClient);
+router.post("/register" /* authLimiter */, registerClient);
+router.post("/login", /* authLimiter */ loginClient);
 
 // 🔑 Mot de passe oublié : réutilise les 3 routes déjà existantes dans /auth,
 // elles fonctionnent nativement pour un client car elles cherchent l'utilisateur
@@ -37,7 +37,7 @@ router.post("/me/localisation", authenticate(["CLIENT"]), updateLocalisationClie
 router.post("/me/push-token", authenticate(["CLIENT"]), savePushTokenClient);
 
 // 📦 COMMANDES
-router.post("/commandes", authenticate(["CLIENT"]), commandeLimiter, creerCommande);
+router.post("/commandes", authenticate(["CLIENT"]), creerCommande);
 router.get("/commandes", authenticate(["CLIENT"]), listerCommandesClient);
 router.get("/commandes/:commandeId", authenticate(["CLIENT"]), suivreCommande);
 router.post("/commandes/annuler", authenticate(["CLIENT"]), annulerCommandeClient);
