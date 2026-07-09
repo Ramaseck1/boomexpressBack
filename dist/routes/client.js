@@ -20,8 +20,8 @@ router.get("/me", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientControll
 router.put("/me", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.updateProfilClient);
 router.post("/me/localisation", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.updateLocalisationClient);
 router.post("/me/push-token", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.savePushTokenClient);
-router.get("/client/adresses/recherche", authMiddleware_1.authenticate, clientController_1.rechercherAdresses);
-router.get("/client/adresses/resoudre/:placeId", authMiddleware_1.authenticate, clientController_1.resoudreAdresse);
+router.get("/adresses/recherche", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.rechercherAdresses);
+router.get("/adresses/resoudre/:placeId", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.resoudreAdresse);
 // 📦 COMMANDES
 router.post("/commandes", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.creerCommande);
 router.get("/commandes", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.listerCommandesClient);

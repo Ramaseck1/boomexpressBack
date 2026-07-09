@@ -40,9 +40,8 @@ router.get("/me", authenticate(["CLIENT"]), getProfilClient);
 router.put("/me", authenticate(["CLIENT"]), updateProfilClient);
 router.post("/me/localisation", authenticate(["CLIENT"]), updateLocalisationClient);
 router.post("/me/push-token", authenticate(["CLIENT"]), savePushTokenClient);
-
-router.get("/client/adresses/recherche", authenticate, rechercherAdresses);
-router.get("/client/adresses/resoudre/:placeId", authenticate, resoudreAdresse);
+router.get("/adresses/recherche", authenticate(["CLIENT"]), rechercherAdresses);
+router.get("/adresses/resoudre/:placeId", authenticate(["CLIENT"]), resoudreAdresse);
 
 // 📦 COMMANDES
 router.post("/commandes", authenticate(["CLIENT"]), creerCommande);
