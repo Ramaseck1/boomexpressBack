@@ -4,6 +4,7 @@ import { Router } from "express";
 import livreurRoutes from "./livreur";
 import authRoutes from "./auth";
  import adminRoutes from "./admin";
+ import clientRoutes from "./client";
 /* import commandesRoutes from "./commandes.routes.js";
 import clientsRoutes from "./clients.routes.js"; */
 /* import paiementsRoutes from "./paiements.routes";
@@ -17,6 +18,7 @@ router.use("/auth", authRoutes);
 
 router.use("/livreur", livreurRoutes);
 router.use("/admin", adminRoutes);
+router.use("/client", clientRoutes); 
 /* router.use("/commandes", commandesRoutes);
 router.use("/clients", clientsRoutes); */
 /* router.use("/paiements", paiementsRoutes);
