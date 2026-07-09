@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.annulerCommandeClient = exports.suivreCommande = exports.listerCommandesClient = exports.creerCommande = exports.savePushTokenClient = exports.updateLocalisationClient = exports.updateProfilClient = exports.getProfilClient = exports.loginClient = exports.registerClient = void 0;
+exports.annulerCommandeClient = exports.suivreCommande = exports.listerCommandesClient = exports.creerCommande = exports.savePushTokenClient = exports.updateLocalisationClient = exports.updateProfilClient = exports.getProfilClient = exports.resoudreAdresse = exports.rechercherAdresses = exports.loginClient = exports.registerClient = void 0;
 const service = __importStar(require("../services/clientService"));
 // ═══════════════════════ AUTH ═══════════════════════
 const registerClient = async (req, res) => {
@@ -60,6 +60,30 @@ const loginClient = async (req, res) => {
     }
 };
 exports.loginClient = loginClient;
+const rechercherAdresses = async (req, res) => {
+    try {
+        const query = String(req.query.q || "");
+        const result = await service.rechercherAdressesService(query);
+        res.json(result);
+    }
+    catch (e) {
+        res.status(400).json({ message: e.message });
+    }
+};
+exports.rechercherAdresses = rechercherAdresses;
+const resoudreAdresse = async (req, res) => {
+    try {
+        const placeId = String(req.query.placeId ?? req.params.placeId ?? "");
+        if (!placeId)
+            return res.status(400).json({ message: "placeId requis" });
+        const result = await service.resoudreAdresseService(placeId);
+        res.json(result);
+    }
+    catch (e) {
+        res.status(400).json({ message: e.message });
+    }
+};
+exports.resoudreAdresse = resoudreAdresse;
 // ═══════════════════════ PROFIL ═══════════════════════
 const getProfilClient = async (req, res) => {
     try {

@@ -19,7 +19,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.annulerCommandeClientService = exports.suivreCommandeService = exports.listerCommandesClientService = exports.creerCommandeService = exports.savePushTokenClientService = exports.updateLocalisationClientService = exports.updateProfilClientService = exports.getProfilClientService = exports.loginClientService = exports.registerClientService = void 0;
+exports.annulerCommandeClientService = exports.suivreCommandeService = exports.listerCommandesClientService = exports.creerCommandeService = exports.savePushTokenClientService = exports.resoudreAdresseService = exports.rechercherAdressesService = exports.updateLocalisationClientService = exports.updateProfilClientService = exports.getProfilClientService = exports.loginClientService = exports.registerClientService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -206,9 +206,14 @@ const updateLocalisationClientService = async (userId, lat, lng) => {
         const client = await prisma_config_1.prisma.client.findUnique({ where: { userId } });
         if (!client)
             throw new Error("Client introuvable");
+        const adresseTexte = await (0, geoService_1.reverseGeocodeGoogle)(lat, lng);
         return await prisma_config_1.prisma.client.update({
             where: { id: client.id },
-            data: { latActuelle: lat, lngActuelle: lng },
+            data: {
+                latActuelle: lat,
+                lngActuelle: lng,
+                ...(adresseTexte ? { adresse: adresseTexte } : {}),
+            },
         });
     }
     catch (error) {
@@ -216,6 +221,26 @@ const updateLocalisationClientService = async (userId, lat, lng) => {
     }
 };
 exports.updateLocalisationClientService = updateLocalisationClientService;
+const rechercherAdressesService = async (query) => {
+    try {
+        return await (0, geoService_1.autocompleteAdresseGoogle)(query);
+    }
+    catch (error) {
+        wrapTechnicalError("rechercherAdressesService", error);
+    }
+};
+exports.rechercherAdressesService = rechercherAdressesService;
+const resoudreAdresseService = async (placeId) => {
+    try {
+        if (!(0, validators_1.isNonEmptyString)(placeId, 300))
+            throw new Error("Adresse invalide");
+        return await (0, geoService_1.getCoordsFromPlaceId)(placeId);
+    }
+    catch (error) {
+        wrapTechnicalError("resoudreAdresseService", error);
+    }
+};
+exports.resoudreAdresseService = resoudreAdresseService;
 const savePushTokenClientService = async (userId, token) => {
     try {
         if (!(0, validators_1.isNonEmptyString)(token, 500))

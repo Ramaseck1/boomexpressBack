@@ -13,11 +13,16 @@ import {
   listerCommandesClient,
   suivreCommande,
   annulerCommandeClient,
+  rechercherAdresses,
+  resoudreAdresse
 } from "../controllers/clientController";
 import { authenticate } from "../middleware/authMiddleware"; // middleware existant, réutilisé tel quel
 /* import { authLimiter, commandeLimiter } from "../middleware/security";
  */
+import { rechercherAdressesService, resoudreAdresseService } from "../services/clientService";
+
 const router = Router();
+
 
 // 🔐 AUTH (email optionnel à l'inscription)
 router.post("/register" /* authLimiter */, registerClient);
@@ -35,6 +40,9 @@ router.get("/me", authenticate(["CLIENT"]), getProfilClient);
 router.put("/me", authenticate(["CLIENT"]), updateProfilClient);
 router.post("/me/localisation", authenticate(["CLIENT"]), updateLocalisationClient);
 router.post("/me/push-token", authenticate(["CLIENT"]), savePushTokenClient);
+
+router.get("/client/adresses/recherche", authenticate, rechercherAdresses);
+router.get("/client/adresses/resoudre/:placeId", authenticate, resoudreAdresse);
 
 // 📦 COMMANDES
 router.post("/commandes", authenticate(["CLIENT"]), creerCommande);

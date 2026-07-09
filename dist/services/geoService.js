@@ -10,6 +10,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TARIF_BASE = exports.TARIF_KM = void 0;
+exports.autocompleteAdresseGoogle = autocompleteAdresseGoogle;
+exports.getCoordsFromPlaceId = getCoordsFromPlaceId;
+exports.reverseGeocodeGoogle = reverseGeocodeGoogle;
 exports.getDistanceKm = getDistanceKm;
 exports.normalizeAdresse = normalizeAdresse;
 exports.getLatLngSmart = getLatLngSmart;
@@ -18,8 +21,82 @@ exports.getDistanceRouteKmMapbox = getDistanceRouteKmMapbox;
 exports.calculerTarif = calculerTarif;
 exports.reverseGeocodeNominatim = reverseGeocodeNominatim;
 const axios_1 = __importDefault(require("axios"));
+const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 exports.TARIF_KM = 100;
 exports.TARIF_BASE = 300;
+async function autocompleteAdresseGoogle(query) {
+    if (!query || query.trim().length < 3)
+        return [];
+    if (!GOOGLE_API_KEY) {
+        console.error("[geoService] GOOGLE_MAPS_API_KEY manquante");
+        return [];
+    }
+    try {
+        const res = await axios_1.default.get("https://maps.googleapis.com/maps/api/place/autocomplete/json", {
+            params: {
+                input: query,
+                key: GOOGLE_API_KEY,
+                components: "country:sn",
+                location: "14.6928,-17.4467", // Dakar
+                radius: 50000,
+                language: "fr",
+            },
+        });
+        if (res.data.status !== "OK" && res.data.status !== "ZERO_RESULTS") {
+            console.error("[Google Autocomplete]", res.data.status, res.data.error_message);
+            return [];
+        }
+        return (res.data.predictions || []).map((p) => ({
+            placeId: p.place_id,
+            description: p.description,
+        }));
+    }
+    catch (err) {
+        console.error("[geoService:autocompleteAdresseGoogle]", err);
+        return [];
+    }
+}
+async function getCoordsFromPlaceId(placeId) {
+    if (!GOOGLE_API_KEY)
+        throw new Error("Service de géolocalisation indisponible");
+    const res = await axios_1.default.get("https://maps.googleapis.com/maps/api/place/details/json", {
+        params: {
+            place_id: placeId,
+            key: GOOGLE_API_KEY,
+            fields: "geometry,formatted_address",
+            language: "fr",
+        },
+    });
+    if (res.data.status !== "OK") {
+        throw new Error("Adresse introuvable");
+    }
+    const loc = res.data.result.geometry.location;
+    return {
+        lat: loc.lat,
+        lng: loc.lng,
+        adresse: res.data.result.formatted_address,
+    };
+}
+/**
+ * Reverse geocoding Google — convertit lat/lng en adresse texte lisible.
+ * Retourne null en cas d'échec (best-effort, ne doit jamais bloquer le flux appelant).
+ */
+async function reverseGeocodeGoogle(lat, lng) {
+    if (!GOOGLE_API_KEY)
+        return null;
+    try {
+        const res = await axios_1.default.get("https://maps.googleapis.com/maps/api/geocode/json", {
+            params: { latlng: `${lat},${lng}`, key: GOOGLE_API_KEY, language: "fr" },
+        });
+        if (res.data.status !== "OK" || !res.data.results.length)
+            return null;
+        return res.data.results[0].formatted_address;
+    }
+    catch (err) {
+        console.error("[geoService:reverseGeocodeGoogle]", err);
+        return null;
+    }
+}
 function getDistanceKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;

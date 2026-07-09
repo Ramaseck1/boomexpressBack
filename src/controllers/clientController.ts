@@ -26,6 +26,28 @@ export const loginClient = async (req: Request, res: Response) => {
   }
 };
 
+
+export const rechercherAdresses = async (req: Request, res: Response) => {
+  try {
+    const query = String(req.query.q || "");
+    const result = await service.rechercherAdressesService(query);
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const resoudreAdresse = async (req: Request, res: Response) => {
+  try {
+    const placeId = String(req.query.placeId ?? req.params.placeId ?? "");
+    if (!placeId) return res.status(400).json({ message: "placeId requis" });
+    const result = await service.resoudreAdresseService(placeId);
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
 // ═══════════════════════ PROFIL ═══════════════════════
 
 export const getProfilClient = async (req: Request, res: Response) => {

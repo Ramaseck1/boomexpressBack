@@ -5,8 +5,8 @@ exports.swaggerDocument = {
     openapi: "3.0.3",
     info: {
         title: "MOTO EXPRESS API",
-        version: "1.8.0",
-        description: "API livraison moto - Dakar et Saint-Louis (gestion commandes, clients, livreurs, paiements, blocages, navigation Mapbox)",
+        version: "1.9.0",
+        description: "API livraison moto - Dakar et Saint-Louis (gestion commandes, clients, livreurs, paiements, blocages, navigation Mapbox). ✅ v1.9.0 : ajout de l'espace Client (inscription, commande avec assignation automatique, suivi temps réel, annulation).",
     },
     servers: [{ url: "http://localhost:3000/api" }],
     tags: [
@@ -15,6 +15,7 @@ exports.swaggerDocument = {
         { name: "Livreur" },
         { name: "Documents", description: "📄 Gestion des documents livreurs (CNI, permis, assurance)" },
         { name: "Navigation", description: "🗺️ Navigation Mapbox GPS temps réel" },
+        { name: "Client (App mobile)", description: "📱 Espace client final — inscription, commande, suivi temps réel" },
         { name: "Clients" },
         { name: "Commandes" },
         { name: "Paiements" },
@@ -120,12 +121,14 @@ exports.swaggerDocument = {
         },
         // ═══════════════════════════════════════════
         // AUTH — RESET MOT DE PASSE 🔑
+        // (réutilisé nativement par Admin, Livreur et Client — l'identifiant
+        //  peut être un téléphone ou un email, indépendamment du rôle)
         // ═══════════════════════════════════════════
         "/auth/password-reset/request": {
             post: {
                 tags: ["Auth"],
                 summary: "🔑 Étape 1 — Demander un code de réinitialisation",
-                description: "Envoie un code à 6 chiffres par **email** à l'adresse associée au compte. L'identifiant peut être le **téléphone** ou l'**email** du livreur. Le code est valable **15 minutes**.",
+                description: "Envoie un code à 6 chiffres par **email** à l'adresse associée au compte. L'identifiant peut être le **téléphone** ou l'**email**, pour un compte Admin, Livreur ou Client. Le code est valable **15 minutes**.",
                 requestBody: {
                     required: true,
                     content: {
@@ -312,6 +315,298 @@ exports.swaggerDocument = {
                                     tokenInvalide: {
                                         summary: "Token expiré",
                                         value: { message: "Token invalide ou expiré" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        // ═══════════════════════════════════════════
+        // CLIENT (APP MOBILE) — ✅ NOUVEAU
+        // ═══════════════════════════════════════════
+        "/client/register": {
+            post: {
+                tags: ["Client (App mobile)"],
+                summary: "📝 Inscription client (email facultatif)",
+                description: "Crée un compte `User` avec le rôle `CLIENT` et un profil `Client` associé. L'email est **facultatif** — sans email, le client ne pourra pas utiliser la réinitialisation de mot de passe par code.",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": { schema: { $ref: "#/components/schemas/RegisterClient" } },
+                    },
+                },
+                responses: {
+                    "201": {
+                        description: "Compte créé, token renvoyé",
+                        content: {
+                            "application/json": { schema: { $ref: "#/components/schemas/ClientAuthResponse" } },
+                        },
+                    },
+                    "400": {
+                        description: "Champs invalides ou numéro/email déjà utilisé",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    telephoneUtilise: { summary: "Numéro déjà utilisé", value: { message: "Ce numéro est déjà utilisé" } },
+                                    emailUtilise: { summary: "Email déjà utilisé", value: { message: "Cet email est déjà utilisé" } },
+                                    telephoneInvalide: { summary: "Téléphone invalide", value: { message: "Numéro de téléphone invalide" } },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/client/login": {
+            post: {
+                tags: ["Client (App mobile)"],
+                summary: "🔐 Connexion client",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["telephone", "password"],
+                                properties: {
+                                    telephone: { type: "string", example: "771234567" },
+                                    password: { type: "string", example: "MonMotDePasse1!" },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": {
+                        description: "Connexion réussie — copier le token dans Authorize 🔐",
+                        content: {
+                            "application/json": { schema: { $ref: "#/components/schemas/ClientAuthResponse" } },
+                        },
+                    },
+                    "400": {
+                        description: "Identifiants invalides ou compte désactivé",
+                        content: {
+                            "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } },
+                        },
+                    },
+                },
+            },
+        },
+        "/client/me": {
+            get: {
+                tags: ["Client (App mobile)"],
+                security: [{ bearerAuth: [] }],
+                summary: "👤 Voir mon profil",
+                responses: {
+                    "200": {
+                        description: "Profil du client connecté",
+                        content: {
+                            "application/json": { schema: { $ref: "#/components/schemas/ClientProfile" } },
+                        },
+                    },
+                },
+            },
+            put: {
+                tags: ["Client (App mobile)"],
+                security: [{ bearerAuth: [] }],
+                summary: "✏️ Modifier mon profil",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": { schema: { $ref: "#/components/schemas/UpdateProfilClient" } },
+                    },
+                },
+                responses: {
+                    "200": {
+                        description: "Profil mis à jour",
+                        content: {
+                            "application/json": { schema: { $ref: "#/components/schemas/ClientProfile" } },
+                        },
+                    },
+                    "400": { description: "Email déjà utilisé ou données invalides" },
+                },
+            },
+        },
+        "/client/me/localisation": {
+            post: {
+                tags: ["Client (App mobile)"],
+                security: [{ bearerAuth: [] }],
+                summary: "📍 Mettre à jour ma position GPS live",
+                description: "Enregistre la position GPS actuelle du client. Utilisée en priorité comme point de départ lors de la création d'une commande, pour trouver le livreur disponible le plus proche.",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["lat", "lng"],
+                                properties: {
+                                    lat: { type: "number", example: 16.019 },
+                                    lng: { type: "number", example: -16.489 },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": { description: "Position enregistrée" },
+                    "400": { description: "Coordonnées GPS invalides" },
+                },
+            },
+        },
+        "/client/me/push-token": {
+            post: {
+                tags: ["Client (App mobile)"],
+                security: [{ bearerAuth: [] }],
+                summary: "🔔 Enregistrer mon token de notification push",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["token"],
+                                properties: {
+                                    token: { type: "string", example: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxx]" },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": { description: "Token enregistré" },
+                },
+            },
+        },
+        "/client/commandes": {
+            post: {
+                tags: ["Client (App mobile)"],
+                security: [{ bearerAuth: [] }],
+                summary: "📦 Créer une commande (assignation automatique au livreur le plus proche)",
+                description: "Crée une commande, calcule le tarif (distance réelle via Mapbox), puis cherche automatiquement le **livreur disponible le plus proche** de la position de départ et lui envoie une notification push. La commande apparaît immédiatement dans l'app du livreur (même flux que l'assignation admin).",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": { schema: { $ref: "#/components/schemas/NouvelleCommandeClient" } },
+                    },
+                },
+                responses: {
+                    "201": {
+                        description: "Commande créée (avec ou sans livreur assigné immédiatement)",
+                        content: {
+                            "application/json": { schema: { $ref: "#/components/schemas/NouvelleCommandeClientResponse" } },
+                        },
+                    },
+                    "400": {
+                        description: "Adresse manquante, téléphone invalide, ou position introuvable",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    adresseManquante: { summary: "Adresse manquante", value: { message: "Adresse de livraison requise" } },
+                                    positionManquante: {
+                                        summary: "Pas de position",
+                                        value: { message: "Position de départ introuvable, activez votre localisation" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            get: {
+                tags: ["Client (App mobile)"],
+                security: [{ bearerAuth: [] }],
+                summary: "📜 Historique de mes commandes",
+                responses: {
+                    "200": {
+                        description: "Liste des commandes du client connecté",
+                        content: {
+                            "application/json": {
+                                schema: { type: "array", items: { $ref: "#/components/schemas/CommandeClient" } },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/client/commandes/{commandeId}": {
+            get: {
+                tags: ["Client (App mobile)"],
+                security: [{ bearerAuth: [] }],
+                summary: "📡 Suivre une commande en temps réel",
+                description: "Retourne le statut de la commande et, si un livreur est assigné, sa position GPS actuelle (`livreur.lat` / `livreur.lng`) — à interroger par polling (ex: toutes les 5 secondes) pour afficher le livreur en mouvement sur la carte.",
+                parameters: [
+                    { name: "commandeId", in: "path", required: true, schema: { type: "integer", example: 42 } },
+                ],
+                responses: {
+                    "200": {
+                        description: "Détails de suivi",
+                        content: {
+                            "application/json": { schema: { $ref: "#/components/schemas/SuiviCommandeResponse" } },
+                        },
+                    },
+                    "400": {
+                        description: "Commande introuvable ou n'appartenant pas à ce client",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    nonAutorise: {
+                                        summary: "Commande d'un autre client",
+                                        value: { message: "Vous n'êtes pas autorisé à accéder à cette commande" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/client/commandes/annuler": {
+            post: {
+                tags: ["Client (App mobile)"],
+                security: [{ bearerAuth: [] }],
+                summary: "❌ Annuler ma commande",
+                description: "Refusé si la commande est déjà `livree`, `annulee` ou `supprimé`.",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["commandeId"],
+                                properties: {
+                                    commandeId: { type: "integer", example: 42 },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": {
+                        description: "Commande annulée avec succès",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: { message: { type: "string", example: "Commande annulée avec succès" } },
+                                },
+                            },
+                        },
+                    },
+                    "400": {
+                        description: "commandeId manquant, commande introuvable, non autorisée, ou déjà finalisée",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    dejaFinalisee: {
+                                        summary: "Commande déjà livrée/annulée",
+                                        value: { message: "Cette commande ne peut plus être annulée" },
                                     },
                                 },
                             },
@@ -1122,7 +1417,132 @@ exports.swaggerDocument = {
                     disponible: { type: "boolean", example: false },
                 },
             },
-            // ── Client ──────────────────────────────
+            // ── Client (App mobile) — ✅ NOUVEAU ────
+            RegisterClient: {
+                type: "object",
+                required: ["nom", "prenom", "telephone", "password"],
+                properties: {
+                    nom: { type: "string", example: "Sarr" },
+                    prenom: { type: "string", example: "Awa" },
+                    telephone: { type: "string", example: "771234567" },
+                    password: { type: "string", example: "MonMotDePasse1!" },
+                    email: { type: "string", nullable: true, description: "Facultatif — requis uniquement pour le reset de mot de passe", example: "awa.sarr@example.com" },
+                    adresse: { type: "string", nullable: true, example: "Pikine, Dakar" },
+                },
+            },
+            ClientUser: {
+                type: "object",
+                properties: {
+                    id: { type: "integer", example: 12 },
+                    nom: { type: "string", example: "Sarr" },
+                    prenom: { type: "string", example: "Awa" },
+                    telephone: { type: "string", example: "771234567" },
+                    email: { type: "string", nullable: true, example: "awa.sarr@example.com" },
+                    role: { type: "string", enum: ["CLIENT"], example: "CLIENT" },
+                },
+            },
+            ClientAuthResponse: {
+                type: "object",
+                properties: {
+                    token: { type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+                    user: { $ref: "#/components/schemas/ClientUser" },
+                },
+            },
+            ClientProfile: {
+                type: "object",
+                properties: {
+                    id: { type: "integer", example: 12 },
+                    nom: { type: "string", example: "Sarr" },
+                    prenom: { type: "string", example: "Awa" },
+                    telephone: { type: "string", example: "771234567" },
+                    email: { type: "string", nullable: true },
+                    role: { type: "string", example: "CLIENT" },
+                    statut: { type: "string", example: "actif" },
+                    client: {
+                        type: "object",
+                        properties: {
+                            id: { type: "integer", example: 5 },
+                            adresse: { type: "string", example: "Pikine, Dakar" },
+                            adresseLivraison: { type: "string", example: "Guédiawaye, Dakar" },
+                            telephoneDestinataire: { type: "string", example: "761234567" },
+                            latActuelle: { type: "number", nullable: true, example: 16.019 },
+                            lngActuelle: { type: "number", nullable: true, example: -16.489 },
+                        },
+                    },
+                },
+            },
+            UpdateProfilClient: {
+                type: "object",
+                properties: {
+                    nom: { type: "string", example: "Sarr" },
+                    prenom: { type: "string", example: "Awa" },
+                    email: { type: "string", example: "awa.sarr@example.com" },
+                    adresse: { type: "string", example: "Pikine, Dakar" },
+                },
+            },
+            NouvelleCommandeClient: {
+                type: "object",
+                required: ["adresseLivraison", "telephoneDestinataire"],
+                properties: {
+                    adresseDepart: {
+                        type: "string",
+                        nullable: true,
+                        description: "Texte libre, utilisé seulement si ni departCoords ni position live enregistrée ne sont disponibles",
+                        example: "Pikine, Dakar",
+                    },
+                    departCoords: {
+                        type: "object",
+                        nullable: true,
+                        description: "Position GPS live du client (recommandé — priorité sur l'adresse texte)",
+                        properties: { lat: { type: "number", example: 16.019 }, lng: { type: "number", example: -16.489 } },
+                    },
+                    adresseLivraison: { type: "string", example: "Guédiawaye, Dakar" },
+                    adresseLivraisonCoords: {
+                        type: "object",
+                        nullable: true,
+                        properties: { lat: { type: "number", example: 14.779 }, lng: { type: "number", example: -17.409 } },
+                    },
+                    telephoneDestinataire: { type: "string", example: "761234567" },
+                    nomExpediteur: { type: "string", nullable: true, example: "Awa Sarr" },
+                    nomDestinataire: { type: "string", nullable: true, example: "Moussa Ba" },
+                },
+            },
+            NouvelleCommandeClientResponse: {
+                type: "object",
+                properties: {
+                    commande: { $ref: "#/components/schemas/CommandeClient" },
+                    livraison: { $ref: "#/components/schemas/Livraison", nullable: true },
+                    livreur: {
+                        type: "object",
+                        nullable: true,
+                        properties: {
+                            id: { type: "integer", example: 7 },
+                            distanceKm: { type: "number", example: 1.8 },
+                        },
+                    },
+                    message: { type: "string", example: "Commande créée, un livreur a été notifié" },
+                },
+            },
+            SuiviCommandeResponse: {
+                type: "object",
+                properties: {
+                    commande: { $ref: "#/components/schemas/CommandeClient" },
+                    livreur: {
+                        type: "object",
+                        nullable: true,
+                        properties: {
+                            id: { type: "integer", example: 7 },
+                            nom: { type: "string", example: "Ba" },
+                            prenom: { type: "string", example: "Moussa" },
+                            telephone: { type: "string", example: "781234567" },
+                            lat: { type: "number", nullable: true, example: 16.021 },
+                            lng: { type: "number", nullable: true, example: -16.491 },
+                            statutLivraison: { type: "string", example: "en_attente" },
+                        },
+                    },
+                },
+            },
+            // ── Client (Admin — existant) ───────────
             Client: {
                 type: "object",
                 properties: {
@@ -1192,6 +1612,23 @@ exports.swaggerDocument = {
                     createdAt: { type: "string", format: "date-time" },
                 },
             },
+            // ── Commande vue par le client — ✅ NOUVEAU (champs additionnels) ──
+            CommandeClient: {
+                type: "object",
+                properties: {
+                    id: { type: "integer", example: 42 },
+                    statut: { type: "string", enum: ["en_attente", "en_cours", "livree", "annulee"], example: "en_attente" },
+                    montant: { type: "number", example: 2100 },
+                    adresseDepart: { type: "string", nullable: true, example: "Pikine, Dakar" },
+                    adresseLivraison: { type: "string", nullable: true, example: "Guédiawaye, Dakar" },
+                    telephoneDestinataire: { type: "string", nullable: true, example: "761234567" },
+                    departLat: { type: "number", nullable: true, example: 16.019 },
+                    departLng: { type: "number", nullable: true, example: -16.489 },
+                    destLat: { type: "number", nullable: true, example: 14.779 },
+                    destLng: { type: "number", nullable: true, example: -17.409 },
+                    createdAt: { type: "string", format: "date-time" },
+                },
+            },
             CommandeCreate: {
                 type: "object",
                 required: ["clientId"],
@@ -1214,7 +1651,7 @@ exports.swaggerDocument = {
                     id: { type: "integer", example: 5 },
                     commandeId: { type: "integer", example: 1 },
                     livreurId: { type: "integer", example: 2 },
-                    statut: { type: "string", enum: ["en_cours", "livree"] },
+                    statut: { type: "string", enum: ["en_attente", "en_cours", "livree", "annulee"] },
                     dateLivraison: { type: "string", format: "date-time", nullable: true },
                     destinationLat: { type: "number", nullable: true },
                     destinationLng: { type: "number", nullable: true },

@@ -24,6 +24,9 @@ import {
   validateAdresseSenegal,
   getDistanceRouteKmMapbox,
   calculerTarif,
+  autocompleteAdresseGoogle,   // + ajout
+  getCoordsFromPlaceId,        // + ajout
+  reverseGeocodeGoogle,   
 } from "./geoService";
 import {
   isValidTelephoneSN,
@@ -230,12 +233,35 @@ export const updateLocalisationClientService = async (userId: number, lat: numbe
     const client = await prisma.client.findUnique({ where: { userId } });
     if (!client) throw new Error("Client introuvable");
 
+    const adresseTexte = await reverseGeocodeGoogle(lat, lng);
+
     return await prisma.client.update({
       where: { id: client.id },
-      data: { latActuelle: lat, lngActuelle: lng },
+      data: {
+        latActuelle: lat,
+        lngActuelle: lng,
+        ...(adresseTexte ? { adresse: adresseTexte } : {}),
+      },
     });
   } catch (error) {
     wrapTechnicalError("updateLocalisationClientService", error);
+  }
+};
+
+export const rechercherAdressesService = async (query: string) => {
+  try {
+    return await autocompleteAdresseGoogle(query);
+  } catch (error) {
+    wrapTechnicalError("rechercherAdressesService", error);
+  }
+};
+
+export const resoudreAdresseService = async (placeId: string) => {
+  try {
+    if (!isNonEmptyString(placeId, 300)) throw new Error("Adresse invalide");
+    return await getCoordsFromPlaceId(placeId);
+  } catch (error) {
+    wrapTechnicalError("resoudreAdresseService", error);
   }
 };
 
