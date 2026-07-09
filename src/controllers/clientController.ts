@@ -1,0 +1,109 @@
+// controllers/clientController.ts
+// NOUVEAU CONTROLLER — dédié au client. N'importe/ne modifie aucun fichier existant.
+
+import { Request, Response } from "express";
+import * as service from "../services/clientService";
+
+// ═══════════════════════ AUTH ═══════════════════════
+
+export const registerClient = async (req: Request, res: Response) => {
+  try {
+    const { nom, prenom, telephone, password, email, adresse } = req.body;
+    const result = await service.registerClientService({ nom, prenom, telephone, password, email, adresse });
+    res.status(201).json(result);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const loginClient = async (req: Request, res: Response) => {
+  try {
+    const { telephone, password } = req.body;
+    const result = await service.loginClientService(telephone, password);
+    res.json(result);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+// ═══════════════════════ PROFIL ═══════════════════════
+
+export const getProfilClient = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    res.json(await service.getProfilClientService(userId));
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const updateProfilClient = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    res.json(await service.updateProfilClientService(userId, req.body));
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const updateLocalisationClient = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { lat, lng } = req.body;
+    res.json(await service.updateLocalisationClientService(userId, Number(lat), Number(lng)));
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const savePushTokenClient = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { token } = req.body;
+    res.json(await service.savePushTokenClientService(userId, token));
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+// ═══════════════════════ COMMANDES ═══════════════════════
+
+export const creerCommande = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const result = await service.creerCommandeService(userId, req.body);
+    res.status(201).json(result);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const listerCommandesClient = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    res.json(await service.listerCommandesClientService(userId));
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const suivreCommande = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { commandeId } = req.params;
+    res.json(await service.suivreCommandeService(userId, Number(commandeId)));
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};
+
+export const annulerCommandeClient = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { commandeId } = req.body;
+    if (!commandeId) return res.status(400).json({ message: "commandeId requis" });
+    res.json(await service.annulerCommandeClientService(userId, Number(commandeId)));
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
+  }
+};

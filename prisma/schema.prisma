@@ -1,3 +1,9 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// SCHEMA MIS À JOUR — rien n'est supprimé, uniquement des ajouts (marqués ✅ NEW)
+// Remplacez votre prisma/schema.prisma par celui-ci, puis :
+//   npx prisma migrate dev --name add_client_user
+// ═══════════════════════════════════════════════════════════════════════════
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,6 +25,7 @@ model User {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   livreur           Livreur?
+  client            Client?             // ✅ NEW — lien 1-1 vers le profil client
   PasswordResetCode PasswordResetCode[]
 }
 
@@ -28,19 +35,24 @@ model PasswordResetCode {
   code      String
   expiresAt DateTime
   used      Boolean  @default(false)
-  verified  Boolean  @default(false) // ← ajouter ce champ
+  verified  Boolean  @default(false)
 
   user User @relation(fields: [userId], references: [id])
 }
 
 model Client {
   id                    Int      @id @default(autoincrement())
+  userId                Int?     @unique // ✅ NEW — null pour les clients "walk-in" créés par l'admin (comportement existant inchangé)
+  user                  User?    @relation(fields: [userId], references: [id], onDelete: Cascade) // ✅ NEW
   nom                   String
   prenom                String
   telephone             String
   adresse               String
   adresseLivraison      String
   telephoneDestinataire String
+  latActuelle           Float?   // ✅ NEW — position GPS live du client (pour proposer le livreur le plus proche)
+  lngActuelle           Float?   // ✅ NEW
+  pushToken             String?  // ✅ NEW — notifications push (livreur en route, etc.)
   createdAt             DateTime @default(now())
 
   commandes Commande[]
@@ -62,7 +74,18 @@ model Commande {
   commissionPaye Boolean  @default(false)
   createdAt      DateTime @default(now())
   statut         String   @default("en_attente")
-  deletedAt DateTime?
+  deletedAt      DateTime?
+
+  // ✅ NEW — adresses/coordonnées propres à CETTE commande (le flux admin existant
+  // continue de fonctionner sans ces champs, via client.adresse / client.adresseLivraison)
+  adresseDepart          String?
+  adresseLivraison       String?
+  telephoneDestinataire  String?
+  departLat              Float?
+  departLng              Float?
+  destLat                Float?
+  destLng                Float?
+  annulePar              String?  // "client" | "admin" | null
 
   livraisons Livraison[] @relation("CommandeLivraison")
 }
@@ -78,26 +101,24 @@ model Livreur {
   latActuelle      Float?
   lngActuelle      Float?
   estVerifie       Boolean   @default(false)
-  pushToken String?
+  pushToken        String?
 
   user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
   livraisons  Livraison[]
   commissions PaiementCommission[]
   blocages    Blocage[]
-  documents   DocumentLivreur? // ✅ ? car @unique sur livreurId = relation 1-to-1
+  documents   DocumentLivreur?
 }
 
 model DocumentLivreur {
   id        Int @id @default(autoincrement())
   livreurId Int @unique
 
-  // Obligatoire
   cniRectoUrl      String
   cniRectoPublicId String
   cniVersoUrl      String
   cniVersoPublicId String
 
-  // Optionnels
   permisUrl         String?
   permisPublicId    String?
   assuranceUrl      String?
@@ -117,7 +138,7 @@ model Livraison {
   livreurId      Int
   statut         String
   dateLivraison  DateTime?
-  destinationLat Float? // 📍 manquait
+  destinationLat Float?
   destinationLng Float?
   commande       Commande  @relation(fields: [commandeId], references: [id], name: "CommandeLivraison")
   livreur        Livreur   @relation(fields: [livreurId], references: [id])
@@ -144,4 +165,5 @@ enum Role {
   ADMIN
   LIVREUR
   SUPERADMIN
+  CLIENT // ✅ NEW
 }
