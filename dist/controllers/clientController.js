@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.annulerCommandeClient = exports.suivreCommande = exports.listerCommandesClient = exports.creerCommande = exports.savePushTokenClient = exports.updateLocalisationClient = exports.updateProfilClient = exports.getProfilClient = exports.resoudreAdresse = exports.rechercherAdresses = exports.loginClient = exports.registerClient = void 0;
+exports.annulerCommandeClient = exports.suivreCommande = exports.listerCommandesClient = exports.creerCommande = exports.savePushTokenClient = exports.updateLocalisationClient = exports.updateProfilClient = exports.getProfilClient = exports.estimerCommande = exports.resoudreAdresse = exports.rechercherAdresses = exports.loginClient = exports.registerClient = void 0;
 const service = __importStar(require("../services/clientService"));
 // ═══════════════════════ AUTH ═══════════════════════
 const registerClient = async (req, res) => {
@@ -85,6 +85,18 @@ const resoudreAdresse = async (req, res) => {
 };
 exports.resoudreAdresse = resoudreAdresse;
 // ═══════════════════════ PROFIL ═══════════════════════
+// clientController.ts
+const estimerCommande = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const result = await service.estimerCommandeService(userId, req.body);
+        res.json(result);
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+exports.estimerCommande = estimerCommande;
 const getProfilClient = async (req, res) => {
     try {
         const userId = req.user.userId;

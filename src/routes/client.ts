@@ -14,7 +14,8 @@ import {
   suivreCommande,
   annulerCommandeClient,
   rechercherAdresses,
-  resoudreAdresse
+  resoudreAdresse,
+  estimerCommande
 } from "../controllers/clientController";
 import { authenticate } from "../middleware/authMiddleware"; // middleware existant, réutilisé tel quel
 /* import { authLimiter, commandeLimiter } from "../middleware/security";
@@ -48,5 +49,7 @@ router.post("/commandes", authenticate(["CLIENT"]), creerCommande);
 router.get("/commandes", authenticate(["CLIENT"]), listerCommandesClient);
 router.get("/commandes/:commandeId", authenticate(["CLIENT"]), suivreCommande);
 router.post("/commandes/annuler", authenticate(["CLIENT"]), annulerCommandeClient);
+router.post("/commandes/estimation", authenticate(["CLIENT"]), estimerCommande);
+
 
 export default router;

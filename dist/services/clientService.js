@@ -19,7 +19,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.annulerCommandeClientService = exports.suivreCommandeService = exports.listerCommandesClientService = exports.creerCommandeService = exports.savePushTokenClientService = exports.resoudreAdresseService = exports.rechercherAdressesService = exports.updateLocalisationClientService = exports.updateProfilClientService = exports.getProfilClientService = exports.loginClientService = exports.registerClientService = void 0;
+exports.annulerCommandeClientService = exports.suivreCommandeService = exports.listerCommandesClientService = exports.creerCommandeService = exports.savePushTokenClientService = exports.resoudreAdresseService = exports.rechercherAdressesService = exports.updateLocalisationClientService = exports.updateProfilClientService = exports.getProfilClientService = exports.loginClientService = exports.estimerCommandeService = exports.registerClientService = void 0;
 const prisma_config_1 = require("../prisma/prisma.config");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -124,6 +124,46 @@ const registerClientService = async (data) => {
     }
 };
 exports.registerClientService = registerClientService;
+const estimerCommandeService = async (userId, data) => {
+    try {
+        if (!(0, validators_1.isNonEmptyString)(data.adresseLivraison, 255))
+            throw new Error("Adresse de livraison requise");
+        const client = await prisma_config_1.prisma.client.findUnique({ where: { userId } });
+        if (!client)
+            throw new Error("Client introuvable");
+        // ── Départ (même logique que creerCommandeService) ──────────────────────
+        let depart;
+        if (data.departCoords && (0, validators_1.isValidLat)(data.departCoords.lat) && (0, validators_1.isValidLng)(data.departCoords.lng)) {
+            depart = data.departCoords;
+        }
+        else if (client.latActuelle != null && client.lngActuelle != null) {
+            depart = { lat: client.latActuelle, lng: client.lngActuelle };
+        }
+        else if (data.adresseDepart) {
+            depart = await (0, geoService_1.validateAdresseSenegal)(data.adresseDepart);
+        }
+        else {
+            throw new Error("Position de départ introuvable, activez votre localisation");
+        }
+        // ── Destination ───────────────────────────────────────────────────────
+        let dest;
+        if (data.adresseLivraisonCoords &&
+            (0, validators_1.isValidLat)(data.adresseLivraisonCoords.lat) &&
+            (0, validators_1.isValidLng)(data.adresseLivraisonCoords.lng)) {
+            dest = data.adresseLivraisonCoords;
+        }
+        else {
+            dest = await (0, geoService_1.validateAdresseSenegal)(data.adresseLivraison);
+        }
+        const distanceKm = await (0, geoService_1.getDistanceRouteKmMapbox)(depart, dest);
+        const { montant } = (0, geoService_1.calculerTarif)(distanceKm);
+        return { prix: montant, distanceKm };
+    }
+    catch (error) {
+        wrapTechnicalError("estimerCommandeService", error);
+    }
+};
+exports.estimerCommandeService = estimerCommandeService;
 const loginClientService = async (telephone, password) => {
     try {
         if (!(0, validators_1.isValidTelephoneSN)(telephone) || !(0, validators_1.isNonEmptyString)(password, 72)) {

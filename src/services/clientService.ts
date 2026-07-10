@@ -154,6 +154,54 @@ export const registerClientService = async (data: {
   }
 };
 
+
+export const estimerCommandeService = async (
+  userId: number,
+  data: {
+    adresseDepart?: string;
+    departCoords?: { lat: number; lng: number };
+    adresseLivraison: string;
+    adresseLivraisonCoords?: { lat: number; lng: number };
+  }
+) => {
+  try {
+    if (!isNonEmptyString(data.adresseLivraison, 255)) throw new Error("Adresse de livraison requise");
+
+    const client = await prisma.client.findUnique({ where: { userId } });
+    if (!client) throw new Error("Client introuvable");
+
+    // ── Départ (même logique que creerCommandeService) ──────────────────────
+    let depart: { lat: number; lng: number };
+    if (data.departCoords && isValidLat(data.departCoords.lat) && isValidLng(data.departCoords.lng)) {
+      depart = data.departCoords;
+    } else if (client.latActuelle != null && client.lngActuelle != null) {
+      depart = { lat: client.latActuelle, lng: client.lngActuelle };
+    } else if (data.adresseDepart) {
+      depart = await validateAdresseSenegal(data.adresseDepart);
+    } else {
+      throw new Error("Position de départ introuvable, activez votre localisation");
+    }
+
+    // ── Destination ───────────────────────────────────────────────────────
+    let dest: { lat: number; lng: number };
+    if (
+      data.adresseLivraisonCoords &&
+      isValidLat(data.adresseLivraisonCoords.lat) &&
+      isValidLng(data.adresseLivraisonCoords.lng)
+    ) {
+      dest = data.adresseLivraisonCoords;
+    } else {
+      dest = await validateAdresseSenegal(data.adresseLivraison);
+    }
+
+    const distanceKm = await getDistanceRouteKmMapbox(depart, dest);
+    const { montant } = calculerTarif(distanceKm);
+
+    return { prix: montant, distanceKm };
+  } catch (error) {
+    wrapTechnicalError("estimerCommandeService", error);
+  }
+};
 export const loginClientService = async (telephone: string, password: string) => {
   try {
     if (!isValidTelephoneSN(telephone) || !isNonEmptyString(password, 72)) {

@@ -50,6 +50,20 @@ export const resoudreAdresse = async (req: Request, res: Response) => {
 
 // ═══════════════════════ PROFIL ═══════════════════════
 
+
+// clientController.ts
+export const estimerCommande = async (req: Request, res: Response) => {
+  try {
+        const userId = (req as any).user.userId;
+
+    const result = await service.estimerCommandeService(userId, req.body);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+
 export const getProfilClient = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;

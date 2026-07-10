@@ -27,4 +27,5 @@ router.post("/commandes", (0, authMiddleware_1.authenticate)(["CLIENT"]), client
 router.get("/commandes", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.listerCommandesClient);
 router.get("/commandes/:commandeId", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.suivreCommande);
 router.post("/commandes/annuler", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.annulerCommandeClient);
+router.post("/commandes/estimation", (0, authMiddleware_1.authenticate)(["CLIENT"]), clientController_1.estimerCommande);
 exports.default = router;
